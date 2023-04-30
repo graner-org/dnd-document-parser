@@ -1,0 +1,19 @@
+{
+    "$schema": "https://raw.githubusercontent.com/TheGiddyLimit/homebrew/master/_schema-fast/homebrew.json",
+    "_meta": {
+        "sources": [
+        {
+            "json": "bof",
+            "abbreviation": "BoF",
+            "full": "Book of Fiends",
+            "authors": [
+                "Johannes Graner"
+            ],
+            "version": "1.0",
+            "targetSchema": "1.0"
+        }
+    ],
+    "dateAdded": 0,
+    "dateLastModified": 0
+    }
+}
