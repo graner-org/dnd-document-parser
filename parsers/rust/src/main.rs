@@ -17,7 +17,8 @@ fn main() {
             unit: DurationUnit::Time(TimeUnit::Minute),
             concentration: true,
         },
-        range: Range::Point {
+        range: Range::Ranged {
+            type_: TargetType::Point,
             range: 60,
             unit: RangeUnit::Feet,
         },
@@ -36,4 +37,5 @@ fn main() {
         classes: vec!(Classes::Wizard, Classes::Sorcerer),
     };
     println!("{:?}", s);
+    println!("{}", s.range.to_5etools())
 }
