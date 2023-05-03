@@ -120,4 +120,5 @@ pub struct Spell {
     pub damage_type: Option<DamageType>,
     pub description: Vec<String>,
     pub at_higher_levels: Option<String>,
+    pub classes: Vec<Classes>,
 }
