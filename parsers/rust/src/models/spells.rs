@@ -36,66 +36,63 @@ pub enum CastingTimeUnit {
     Time(TimeUnit),
 }
 
+impl To5etools for CastingTimeUnit {
+    fn to_5etools(self) -> String {
+        use CastingTimeUnit::*;
+        match self {
+            Action(action_type) => action_type.to_5etools(),
+            Time(time_unit) => time_unit.to_5etools(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum TargetType {
-    SingleTarget,
-    MultipleTargets,
-    Circle {
-        radius: u16,
-        unit: RangeUnit,
-    },
-    Cone {
-        width: u16,
-        unit: RangeUnit,
-    },
-    Cube {
-        side_length: u16,
-        unit: RangeUnit,
-    },
-    Cylinder {
-        radius: u16,
-        height: u16,
-        unit: RangeUnit,
-    },
-    Hemisphere {
-        radius: u16,
-        unit: RangeUnit,
-    },
-    Line {
-        length: u16,
-        width: u16,
-        unit: RangeUnit,
-    },
-    Sphere {
-        radius: u16,
-        unit: RangeUnit,
-    },
-    Square {
-        side_length: u16,
-        unit: RangeUnit,
-    },
-    Wall {
-        length: u16,
-        height: u16,
-        unit: RangeUnit,
-    },
+    Point,
+    Radius,
+    Cone,
+}
+
+impl To5etools for TargetType {
+    fn to_5etools(self) -> String {
+        use TargetType::*;
+        match self {
+            Point => "point",
+            Radius => "radius",
+            Cone => "cone",
+        }
+        .to_owned()
+    }
 }
 
 #[derive(Debug)]
 pub enum Range {
     Self_,
     Touch,
-    Point {
+    Ranged {
+        type_: TargetType,
         range: u16,
         unit: RangeUnit,
     },
-    Area {
-        range: u16,
-        unit: RangeUnit,
-        target_type: TargetType,
-    },
-    SelfArea(TargetType),
     Special,
+}
+
+impl To5etools for Range {
+    fn to_5etools(self) -> String {
+        use Range::*;
+        match self {
+            Self_ => r#"{ "type": "point", "distance": { "type": "self" } }"#.to_owned(),
+            Touch => r#"{ "type": "point", "distance": { "type": "touch" } }"#.to_owned(),
+            Ranged { type_, range, unit } => format!(
+                // Braces { and } are escaped by doubling.
+                r#"{{ "type": "{}", "distance": {{ "type": "{}", "amount": {} }} }}"#,
+                type_.to_5etools(),
+                unit.to_5etools(),
+                range
+            ),
+            Special => r#"{ "type": "special" }"#.to_owned(),
+        }
+    }
 }
 
 #[derive(Debug)]
