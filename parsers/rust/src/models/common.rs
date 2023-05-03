@@ -42,3 +42,20 @@ pub enum DamageType {
     Slashing,
     Thunder,
 }
+
+#[derive(Debug)]
+pub enum Classes {
+    Artificer,
+    Barbarian,
+    Bard,
+    Cleric,
+    Druid,
+    Fighter,
+    Monk,
+    Paladin,
+    Ranger,
+    Rogue,
+    Sorcerer,
+    Warlock,
+    Wizard,
+}
