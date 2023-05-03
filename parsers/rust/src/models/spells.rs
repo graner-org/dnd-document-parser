@@ -3,14 +3,31 @@ use super::items::*;
 
 #[derive(Debug)]
 pub enum MagicSchool {
-    Conjuration,
-    Necromancy,
-    Evocation,
     Abjuration,
-    Transmutation,
+    Conjuration,
     Divination,
     Enchantment,
+    Evocation,
     Illusion,
+    Necromancy,
+    Transmutation,
+}
+
+impl To5etools for MagicSchool {
+    fn to_5etools(self) -> String {
+        use MagicSchool::*;
+        match self {
+            Abjuration => "A",
+            Conjuration => "C",
+            Divination => "D",
+            Enchantment => "E",
+            Evocation => "V",
+            Illusion => "I",
+            Necromancy => "N",
+            Transmutation => "T",
+        }
+        .to_owned()
+    }
 }
 
 #[derive(Debug)]
