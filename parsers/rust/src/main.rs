@@ -33,6 +33,7 @@ fn main() {
 			"The blade can harmlessly pass through any barrier, including a {@spell wall of force}."
         ].map(|s| s.to_owned()).to_vec(),
         at_higher_levels: None,
+        classes: vec!(Classes::Wizard, Classes::Sorcerer),
     };
     println!("{:?}", s);
 }
