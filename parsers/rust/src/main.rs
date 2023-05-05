@@ -15,6 +15,7 @@ fn main() {
             number: 1,
             unit: CastingTimeUnit::Action(ActionType::Action),
         },
+        ritual: false,
         duration: Duration {
             number: 1,
             unit: DurationUnit::Time(TimeUnit::Minute),
