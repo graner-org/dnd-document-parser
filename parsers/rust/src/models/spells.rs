@@ -115,11 +115,49 @@ pub struct MaterialComponent {
     pub consumed: bool,
 }
 
+impl To5etools for MaterialComponent {
+    fn to_5etools(self) -> Value {
+        if !self.consumed && self.value.is_none() {
+            self.component.into()
+        } else {
+            let text = json!({ "text": self.component });
+            let value = match self.value {
+                Some(value) => json!({ "cost": value.to_5etools() }),
+                None => json!({}),
+            };
+            let consumed = if self.consumed {
+                json!({"consume": true})
+            } else {
+                json!({})
+            };
+            merge_json(vec![text, value, consumed])
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Components {
     pub verbal: bool,
     pub somatic: bool,
     pub material: Option<MaterialComponent>,
+}
+
+impl To5etools for Components {
+    fn to_5etools(self) -> Value {
+        let verbal = match self.verbal {
+            true => json!({"v": true}),
+            false => json!({}),
+        };
+        let somatic = match self.somatic {
+            true => json!({"s": true}),
+            false => json!({}),
+        };
+        let material = match self.material {
+            Some(material) => json!({ "m": material.to_5etools() }),
+            None => json!({}),
+        };
+        merge_json(vec![verbal, somatic, material])
+    }
 }
 
 #[derive(Debug)]
@@ -129,10 +167,43 @@ pub struct Duration {
     pub concentration: bool,
 }
 
+impl To5etools for Duration {
+    fn to_5etools(self) -> Value {
+        use DurationUnit::*;
+        let duration = match self.unit {
+            Instantaneous => json!({"type": self.unit.to_5etools()}),
+            Time(unit) => {
+                let duration = json!({
+                    "type": "timed",
+                    "duration": {
+                        "type": unit.to_5etools(),
+                        "amount": self.number,
+                    }
+                });
+                let concentration = match self.concentration {
+                    true => json!({"concentration": true}),
+                    false => json!({}),
+                };
+                merge_json(vec![duration, concentration])
+            }
+        };
+        json!([duration])
+    }
+}
+
 #[derive(Debug)]
 pub struct CastingTime {
     pub number: u8,
     pub unit: CastingTimeUnit,
+}
+
+impl To5etools for CastingTime {
+    fn to_5etools(self) -> Value {
+        json!([{
+            "number": self.number,
+            "unit": self.unit.to_5etools(),
+        }])
+    }
 }
 
 #[derive(Debug)]
@@ -141,6 +212,7 @@ pub struct Spell {
     pub level: u8,
     pub school: MagicSchool,
     pub casting_time: CastingTime,
+    pub ritual: bool,
     pub duration: Duration,
     pub range: Range,
     pub components: Components,
