@@ -1,5 +1,8 @@
 use models::common::*;
+use models::items::*;
 use models::spells::*;
+
+use crate::models::items::ItemValue;
 
 mod models;
 
@@ -24,8 +27,12 @@ fn main() {
         },
         components: Components {
             verbal: true,
-            somatic: true,
-            material: None,
+            somatic: false,
+            material: Some(MaterialComponent {
+                component: "Comp".into(),
+                value: Some(ItemValue { value: 10, unit: Currency::Gold }),
+                consumed: false
+            }),
         },
         damage_type: Some(DamageType::Force),
         description: [
@@ -38,4 +45,6 @@ fn main() {
     };
     println!("{:?}", s);
     println!("{}", s.range.to_5etools());
+    println!("{}", s.components.to_5etools());
+    println!("{}", s.duration.to_5etools());
 }
