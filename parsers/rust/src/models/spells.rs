@@ -1,5 +1,6 @@
 use super::common::*;
 use super::items::*;
+use serde_json::{json, Value};
 
 #[derive(Debug)]
 pub enum MagicSchool {
@@ -14,9 +15,9 @@ pub enum MagicSchool {
 }
 
 impl To5etools for MagicSchool {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use MagicSchool::*;
-        match self {
+        json!(match self {
             Abjuration => "A",
             Conjuration => "C",
             Divination => "D",
@@ -25,8 +26,7 @@ impl To5etools for MagicSchool {
             Illusion => "I",
             Necromancy => "N",
             Transmutation => "T",
-        }
-        .to_owned()
+        })
     }
 }
 
@@ -37,7 +37,7 @@ pub enum CastingTimeUnit {
 }
 
 impl To5etools for CastingTimeUnit {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use CastingTimeUnit::*;
         match self {
             Action(action_type) => action_type.to_5etools(),
@@ -54,14 +54,13 @@ pub enum TargetType {
 }
 
 impl To5etools for TargetType {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use TargetType::*;
-        match self {
+        json!(match self {
             Point => "point",
             Radius => "radius",
             Cone => "cone",
-        }
-        .to_owned()
+        })
     }
 }
 
@@ -78,19 +77,29 @@ pub enum Range {
 }
 
 impl To5etools for Range {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use Range::*;
         match self {
-            Self_ => r#"{ "type": "point", "distance": { "type": "self" } }"#.to_owned(),
-            Touch => r#"{ "type": "point", "distance": { "type": "touch" } }"#.to_owned(),
-            Ranged { type_, range, unit } => format!(
-                // Braces { and } are escaped by doubling.
-                r#"{{ "type": "{}", "distance": {{ "type": "{}", "amount": {} }} }}"#,
-                type_.to_5etools(),
-                unit.to_5etools(),
-                range
-            ),
-            Special => r#"{ "type": "special" }"#.to_owned(),
+            Self_ => json!({
+                "type": "point",
+                "distance": {
+                    "type": "self"
+                }
+            }),
+            Touch => json!({
+                "type": "point",
+                "distance": {
+                    "type": "touch"
+                }
+            }),
+            Ranged { type_, range, unit } => json!({
+                "type": type_.to_5etools(),
+                "distance": {
+                    "type": unit.to_5etools(),
+                    "amount": range
+                }
+            }),
+            Special => json!({ "type": "special" }),
         }
     }
 }

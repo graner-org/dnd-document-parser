@@ -37,5 +37,5 @@ fn main() {
         classes: vec!(Classes::Wizard, Classes::Sorcerer),
     };
     println!("{:?}", s);
-    println!("{}", s.range.to_5etools())
+    println!("{}", s.range.to_5etools());
 }
