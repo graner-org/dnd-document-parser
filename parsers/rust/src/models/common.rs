@@ -1,5 +1,7 @@
+use serde_json::{json, Value};
+
 pub trait To5etools {
-    fn to_5etools(self) -> String;
+    fn to_5etools(self) -> Value;
 }
 
 #[derive(Debug)]
@@ -10,14 +12,13 @@ pub enum ActionType {
 }
 
 impl To5etools for ActionType {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use ActionType::*;
-        match self {
+        json!(match self {
             Action => "action",
             BonusAction => "bonus",
             Reaction => "reaction",
-        }
-        .to_owned()
+        })
     }
 }
 
@@ -31,16 +32,15 @@ pub enum TimeUnit {
 }
 
 impl To5etools for TimeUnit {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use TimeUnit::*;
-        match self {
+        json!(match self {
             Round => "round",
             Minute => "minute",
             Hour => "hour",
             Day => "day",
             Year => "year",
-        }
-        .to_owned()
+        })
     }
 }
 
@@ -51,10 +51,10 @@ pub enum DurationUnit {
 }
 
 impl To5etools for DurationUnit {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use DurationUnit::*;
         match self {
-            Instantaneous => "instant".to_owned(),
+            Instantaneous => json!("instant"),
             Time(unit) => unit.to_5etools(),
         }
     }
@@ -67,13 +67,12 @@ pub enum RangeUnit {
 }
 
 impl To5etools for RangeUnit {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use RangeUnit::*;
-        match self {
+        json!(match self {
             Feet => "feet",
             Miles => "miles",
-        }
-        .to_owned()
+        })
     }
 }
 
@@ -95,9 +94,9 @@ pub enum DamageType {
 }
 
 impl To5etools for DamageType {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use DamageType::*;
-        match self {
+        json!(match self {
             Acid => "acid",
             Bludgeoning => "bludgeoning",
             Cold => "cold",
@@ -111,8 +110,7 @@ impl To5etools for DamageType {
             Radiant => "radiant",
             Slashing => "slashing",
             Thunder => "thunder",
-        }
-        .to_owned()
+        })
     }
 }
 
@@ -134,9 +132,9 @@ pub enum Classes {
 }
 
 impl To5etools for Classes {
-    fn to_5etools(self) -> String {
+    fn to_5etools(self) -> Value {
         use Classes::*;
-        match self {
+        json!(match self {
             Artificer => "Artificer",
             Barbarian => "Barbarian",
             Bard => "Bard",
@@ -150,7 +148,6 @@ impl To5etools for Classes {
             Sorcerer => "Sorcerer",
             Warlock => "Warlock",
             Wizard => "Wizard",
-        }
-        .to_owned()
+        })
     }
 }
