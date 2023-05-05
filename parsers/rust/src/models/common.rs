@@ -24,6 +24,15 @@ impl To5etools for ActionType {
 }
 
 #[allow(dead_code)]
+pub fn merge_json(json_vec: Vec<Value>) -> Value {
+    json_vec
+        .into_iter()
+        .map(|json: Value| json.as_object().unwrap().clone()) // Value -> Map<String, value>
+        .reduce(|map1, map2| map1.into_iter().chain(map2).collect()) // Add maps
+        .unwrap()
+        .into()
+}
+
 #[derive(Debug)]
 pub enum TimeUnit {
     Round,
@@ -155,5 +164,16 @@ impl To5etools for Classes {
             Warlock => "Warlock",
             Wizard => "Wizard",
         })
+    }
+}
+
+impl Classes {
+    fn source_book(self) -> String {
+        use Classes::*;
+        match self {
+            Artificer => "TCE",
+            _ => "PHB",
+        }
+        .to_owned()
     }
 }
