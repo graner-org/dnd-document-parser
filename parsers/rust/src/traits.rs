@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::Value;
 
 pub trait To5etools {
     fn to_5etools(&self) -> Value;
