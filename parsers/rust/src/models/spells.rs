@@ -2,6 +2,7 @@ use super::common::*;
 use super::items::*;
 use serde_json::{json, Value};
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum MagicSchool {
     Abjuration,
@@ -30,6 +31,7 @@ impl To5etools for MagicSchool {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum CastingTimeUnit {
     Action(ActionType),
@@ -46,6 +48,7 @@ impl To5etools for CastingTimeUnit {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TargetType {
     Point,
@@ -64,6 +67,7 @@ impl To5etools for TargetType {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Range {
     Self_,
