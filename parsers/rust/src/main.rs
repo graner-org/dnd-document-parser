@@ -1,10 +1,10 @@
 use models::common::*;
 use models::items::*;
 use models::spells::*;
-
-use crate::models::items::ItemValue;
+use traits::To5etools;
 
 mod models;
+mod traits;
 
 fn main() {
     let s = Spell {

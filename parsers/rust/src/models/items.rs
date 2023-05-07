@@ -1,4 +1,4 @@
-use super::common::To5etools;
+use crate::traits::To5etools;
 use serde_json::{json, Value};
 
 #[allow(dead_code)]

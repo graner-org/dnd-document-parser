@@ -1,3 +1,5 @@
+use crate::traits::To5etools;
+
 use super::common::*;
 use super::items::*;
 use serde_json::{json, Value};
