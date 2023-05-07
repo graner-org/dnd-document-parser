@@ -1,10 +1,7 @@
-use models::common::*;
-use models::items::*;
-use models::spells::*;
-use traits::To5etools;
-
-mod models;
-mod traits;
+use dnd_document_parser::models::common::*;
+use dnd_document_parser::models::items::*;
+use dnd_document_parser::models::spells::*;
+use dnd_document_parser::traits::To5etools;
 
 fn main() {
     let s = Spell {
