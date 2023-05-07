@@ -4,6 +4,7 @@ pub trait To5etools {
     fn to_5etools(self) -> Value;
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum ActionType {
     Action,
@@ -22,6 +23,7 @@ impl To5etools for ActionType {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TimeUnit {
     Round,
@@ -44,6 +46,7 @@ impl To5etools for TimeUnit {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum DurationUnit {
     Instantaneous,
@@ -60,6 +63,7 @@ impl To5etools for DurationUnit {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum RangeUnit {
     Feet,
@@ -76,6 +80,7 @@ impl To5etools for RangeUnit {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum DamageType {
     Acid,
@@ -114,6 +119,7 @@ impl To5etools for DamageType {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Classes {
     Artificer,
