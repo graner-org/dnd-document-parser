@@ -1,7 +1,44 @@
 use serde_json::{json, Value};
 
+pub trait SpellElement {}
+
 pub trait To5etools {
-    fn to_5etools(self) -> Value;
+    fn to_5etools(&self) -> Value;
+    fn to_5etools_spell(&self) -> Value {
+        self.to_5etools()
+    }
+}
+
+impl<T: To5etools + Copy> To5etools for Vec<T> {
+    fn to_5etools(&self) -> Value {
+        self.iter()
+            .map(|value| value.to_5etools())
+            .collect::<Value>()
+            .into()
+    }
+
+    fn to_5etools_spell(&self) -> Value {
+        self.iter()
+            .map(|value| value.to_5etools_spell())
+            .collect::<Value>()
+            .into()
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub struct Source<'a> {
+    pub source_book: &'a str,
+    pub page: i16,
+}
+
+impl<'a> To5etools for Source<'a> {
+    fn to_5etools(&self) -> Value {
+        json!({
+            "source": self.source_book,
+            "page": self.page,
+        })
+    }
 }
 
 #[allow(dead_code)]
@@ -13,7 +50,7 @@ pub enum ActionType {
 }
 
 impl To5etools for ActionType {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use ActionType::*;
         json!(match self {
             Action => "action",
@@ -23,7 +60,6 @@ impl To5etools for ActionType {
     }
 }
 
-#[allow(dead_code)]
 pub fn merge_json(json_vec: Vec<Value>) -> Value {
     json_vec
         .into_iter()
@@ -33,6 +69,7 @@ pub fn merge_json(json_vec: Vec<Value>) -> Value {
         .into()
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TimeUnit {
     Round,
@@ -43,7 +80,7 @@ pub enum TimeUnit {
 }
 
 impl To5etools for TimeUnit {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use TimeUnit::*;
         json!(match self {
             Round => "round",
@@ -63,7 +100,7 @@ pub enum DurationUnit {
 }
 
 impl To5etools for DurationUnit {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use DurationUnit::*;
         match self {
             Instantaneous => json!("instant"),
@@ -80,7 +117,7 @@ pub enum RangeUnit {
 }
 
 impl To5etools for RangeUnit {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use RangeUnit::*;
         json!(match self {
             Feet => "feet",
@@ -90,7 +127,7 @@ impl To5etools for RangeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum DamageType {
     Acid,
     Bludgeoning,
@@ -108,7 +145,7 @@ pub enum DamageType {
 }
 
 impl To5etools for DamageType {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use DamageType::*;
         json!(match self {
             Acid => "acid",
@@ -129,7 +166,7 @@ impl To5etools for DamageType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Classes {
     Artificer,
     Barbarian,
@@ -147,7 +184,7 @@ pub enum Classes {
 }
 
 impl To5etools for Classes {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use Classes::*;
         json!(match self {
             Artificer => "Artificer",
@@ -163,6 +200,12 @@ impl To5etools for Classes {
             Sorcerer => "Sorcerer",
             Warlock => "Warlock",
             Wizard => "Wizard",
+        })
+    }
+    fn to_5etools_spell(&self) -> Value {
+        json!({
+            "name": self.to_5etools(),
+            "source": self.source_book(),
         })
     }
 }

@@ -2,7 +2,7 @@ use super::common::To5etools;
 use serde_json::{json, Value};
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Currency {
     Copper,
     Silver,
@@ -12,14 +12,14 @@ pub enum Currency {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ItemValue {
     pub value: u32,
     pub unit: Currency,
 }
 
 impl To5etools for ItemValue {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use Currency::*;
         json!(
             self.value

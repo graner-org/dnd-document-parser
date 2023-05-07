@@ -16,7 +16,7 @@ pub enum MagicSchool {
 }
 
 impl To5etools for MagicSchool {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use MagicSchool::*;
         json!(match self {
             Abjuration => "A",
@@ -39,11 +39,11 @@ pub enum CastingTimeUnit {
 }
 
 impl To5etools for CastingTimeUnit {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use CastingTimeUnit::*;
         match self {
-            Action(action_type) => action_type.to_5etools(),
-            Time(time_unit) => time_unit.to_5etools(),
+            Action(action_type) => action_type.to_5etools_spell(),
+            Time(time_unit) => time_unit.to_5etools_spell(),
         }
     }
 }
@@ -57,7 +57,7 @@ pub enum TargetType {
 }
 
 impl To5etools for TargetType {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use TargetType::*;
         json!(match self {
             Point => "point",
@@ -81,7 +81,7 @@ pub enum Range {
 }
 
 impl To5etools for Range {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use Range::*;
         match self {
             Self_ => json!({
@@ -97,9 +97,9 @@ impl To5etools for Range {
                 }
             }),
             Ranged { type_, range, unit } => json!({
-                "type": type_.to_5etools(),
+                "type": type_.to_5etools_spell(),
                 "distance": {
-                    "type": unit.to_5etools(),
+                    "type": unit.to_5etools_spell(),
                     "amount": range
                 }
             }),
@@ -108,21 +108,21 @@ impl To5etools for Range {
     }
 }
 
-#[derive(Debug)]
-pub struct MaterialComponent {
-    pub component: String,
+#[derive(Debug, Clone, Copy)]
+pub struct MaterialComponent<'a> {
+    pub component: &'a str,
     pub value: Option<ItemValue>,
     pub consumed: bool,
 }
 
-impl To5etools for MaterialComponent {
-    fn to_5etools(self) -> Value {
+impl<'a> To5etools for MaterialComponent<'a> {
+    fn to_5etools(&self) -> Value {
         if !self.consumed && self.value.is_none() {
             self.component.into()
         } else {
             let text = json!({ "text": self.component });
             let value = match self.value {
-                Some(value) => json!({ "cost": value.to_5etools() }),
+                Some(value) => json!({ "cost": value.to_5etools_spell() }),
                 None => json!({}),
             };
             let consumed = if self.consumed {
@@ -136,14 +136,14 @@ impl To5etools for MaterialComponent {
 }
 
 #[derive(Debug)]
-pub struct Components {
+pub struct Components<'a> {
     pub verbal: bool,
     pub somatic: bool,
-    pub material: Option<MaterialComponent>,
+    pub material: Option<MaterialComponent<'a>>,
 }
 
-impl To5etools for Components {
-    fn to_5etools(self) -> Value {
+impl<'a> To5etools for Components<'a> {
+    fn to_5etools(&self) -> Value {
         let verbal = match self.verbal {
             true => json!({"v": true}),
             false => json!({}),
@@ -153,7 +153,7 @@ impl To5etools for Components {
             false => json!({}),
         };
         let material = match self.material {
-            Some(material) => json!({ "m": material.to_5etools() }),
+            Some(material) => json!({ "m": material.to_5etools_spell() }),
             None => json!({}),
         };
         merge_json(vec![verbal, somatic, material])
@@ -168,15 +168,15 @@ pub struct Duration {
 }
 
 impl To5etools for Duration {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         use DurationUnit::*;
-        let duration = match self.unit {
-            Instantaneous => json!({"type": self.unit.to_5etools()}),
+        let duration = match &self.unit {
+            Instantaneous => json!({"type": self.unit.to_5etools_spell()}),
             Time(unit) => {
                 let duration = json!({
                     "type": "timed",
                     "duration": {
-                        "type": unit.to_5etools(),
+                        "type": unit.to_5etools_spell(),
                         "amount": self.number,
                     }
                 });
@@ -198,26 +198,77 @@ pub struct CastingTime {
 }
 
 impl To5etools for CastingTime {
-    fn to_5etools(self) -> Value {
+    fn to_5etools(&self) -> Value {
         json!([{
             "number": self.number,
-            "unit": self.unit.to_5etools(),
+            "unit": self.unit.to_5etools_spell(),
         }])
     }
 }
 
 #[derive(Debug)]
-pub struct Spell {
-    pub name: String,
+pub struct Spell<'a> {
+    pub source: Source<'a>,
+    pub name: &'a str,
     pub level: u8,
     pub school: MagicSchool,
     pub casting_time: CastingTime,
     pub ritual: bool,
     pub duration: Duration,
     pub range: Range,
-    pub components: Components,
-    pub damage_type: Option<DamageType>,
-    pub description: Vec<String>,
-    pub at_higher_levels: Option<String>,
+    pub components: Components<'a>,
+    pub damage_type: Option<Vec<DamageType>>,
+    pub description: Vec<&'a str>,
+    pub at_higher_levels: Option<&'a str>,
     pub classes: Vec<Classes>,
+}
+
+impl<'a> To5etools for Spell<'a> {
+    fn to_5etools(&self) -> Value {
+        let source = self.source.to_5etools();
+        let main_body = json!({
+            "name": self.name,
+            "level": self.level,
+            "school": self.school.to_5etools_spell(),
+            "time": self.casting_time.to_5etools_spell(),
+            "range": self.range.to_5etools_spell(),
+            "components": self.components.to_5etools_spell(),
+            "duration": self.duration.to_5etools_spell(),
+            "entries": self.description,
+            "classes": json!({
+                "fromClassList": self.classes.to_5etools_spell()
+            }),
+        });
+        let damage_type = match &self.damage_type {
+            Some(damage_types) => json!({
+                "damageInflict": damage_types.to_5etools_spell(),
+            }),
+            None => json!({}),
+        };
+        let at_higher_levels = match self.at_higher_levels {
+            Some(entries) => json!({
+                "entriesHigherLevel": [{
+                    "type": "entries",
+                    "name": "At Higher Levels",
+                    "entries": [ entries ],
+                }]
+            }),
+            None => json!({}),
+        };
+        let ritual = match self.ritual {
+            true => json!({
+                "meta": {
+                    "ritual": true,
+                },
+            }),
+            false => json!({}),
+        };
+        merge_json(vec![
+            source,
+            main_body,
+            damage_type,
+            at_higher_levels,
+            ritual,
+        ])
+    }
 }
