@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Currency {
     Copper,
@@ -7,6 +8,7 @@ pub enum Currency {
     Platinum,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct ItemValue {
     value: u32,
