@@ -18,7 +18,7 @@ pub enum MagicSchool {
 }
 
 impl To5etools for MagicSchool {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use MagicSchool::*;
         json!(match self {
             Abjuration => "A",
@@ -41,7 +41,7 @@ pub enum CastingTimeUnit {
 }
 
 impl To5etools for CastingTimeUnit {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use CastingTimeUnit::*;
         match self {
             Action(action_type) => action_type.to_5etools_spell(),
@@ -59,7 +59,7 @@ pub enum TargetType {
 }
 
 impl To5etools for TargetType {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use TargetType::*;
         json!(match self {
             Point => "point",
@@ -83,7 +83,7 @@ pub enum Range {
 }
 
 impl To5etools for Range {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use Range::*;
         match self {
             Self_ => json!({
@@ -118,7 +118,7 @@ pub struct MaterialComponent<'a> {
 }
 
 impl<'a> To5etools for MaterialComponent<'a> {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         if !self.consumed && self.value.is_none() {
             self.component.into()
         } else {
@@ -145,7 +145,7 @@ pub struct Components<'a> {
 }
 
 impl<'a> To5etools for Components<'a> {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         let verbal = match self.verbal {
             true => json!({"v": true}),
             false => json!({}),
@@ -170,7 +170,7 @@ pub struct Duration {
 }
 
 impl To5etools for Duration {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use DurationUnit::*;
         let duration = match &self.unit {
             Instantaneous => json!({"type": self.unit.to_5etools_spell()}),
@@ -200,7 +200,7 @@ pub struct CastingTime {
 }
 
 impl To5etools for CastingTime {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         json!([{
             "number": self.number,
             "unit": self.unit.to_5etools_spell(),
@@ -226,8 +226,8 @@ pub struct Spell<'a> {
 }
 
 impl<'a> To5etools for Spell<'a> {
-    fn to_5etools(&self) -> Value {
-        let source = self.source.to_5etools();
+    fn to_5etools_base(&self) -> Value {
+        let source = self.source.to_5etools_base();
         let main_body = json!({
             "name": self.name,
             "level": self.level,
