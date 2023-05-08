@@ -4,6 +4,9 @@ use super::common::*;
 use super::items::*;
 use serde_json::{json, Value};
 
+#[cfg(test)]
+mod tests;
+
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum MagicSchool {
