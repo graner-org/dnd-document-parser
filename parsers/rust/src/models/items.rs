@@ -19,7 +19,7 @@ pub struct ItemValue {
 }
 
 impl To5etools for ItemValue {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use Currency::*;
         json!(
             self.value
