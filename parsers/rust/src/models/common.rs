@@ -10,7 +10,7 @@ pub struct Source<'a> {
 }
 
 impl<'a> To5etools for Source<'a> {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         json!({
             "source": self.source_book,
             "page": self.page,
@@ -27,7 +27,7 @@ pub enum ActionType {
 }
 
 impl To5etools for ActionType {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use ActionType::*;
         json!(match self {
             Action => "action",
@@ -57,7 +57,7 @@ pub enum TimeUnit {
 }
 
 impl To5etools for TimeUnit {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use TimeUnit::*;
         json!(match self {
             Round => "round",
@@ -77,11 +77,11 @@ pub enum DurationUnit {
 }
 
 impl To5etools for DurationUnit {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use DurationUnit::*;
         match self {
             Instantaneous => json!("instant"),
-            Time(unit) => unit.to_5etools(),
+            Time(unit) => unit.to_5etools_base(),
         }
     }
 }
@@ -94,7 +94,7 @@ pub enum RangeUnit {
 }
 
 impl To5etools for RangeUnit {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use RangeUnit::*;
         json!(match self {
             Feet => "feet",
@@ -122,7 +122,7 @@ pub enum DamageType {
 }
 
 impl To5etools for DamageType {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use DamageType::*;
         json!(match self {
             Acid => "acid",
@@ -161,7 +161,7 @@ pub enum Classes {
 }
 
 impl To5etools for Classes {
-    fn to_5etools(&self) -> Value {
+    fn to_5etools_base(&self) -> Value {
         use Classes::*;
         json!(match self {
             Artificer => "Artificer",
@@ -181,7 +181,7 @@ impl To5etools for Classes {
     }
     fn to_5etools_spell(&self) -> Value {
         json!({
-            "name": self.to_5etools(),
+            "name": self.to_5etools_base(),
             "source": self.source_book(),
         })
     }
