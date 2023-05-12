@@ -1,9 +1,15 @@
 use dnd_document_parser::models::common::*;
 use dnd_document_parser::models::items::*;
 use dnd_document_parser::models::spells::*;
+use dnd_document_parser::parsers::spells::*;
 use dnd_document_parser::traits::To5etools;
 
 fn main() {
+    let source = format!(
+        "{}/resources/test/spells/gm_binder_input.html",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    parse_gm_binder(source.as_str());
     let s = Spell {
         source: Source {
             source_book: "PHB",
