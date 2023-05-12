@@ -1,11 +1,16 @@
+use crate::models::common::*;
 use crate::models::spells::*;
 use itertools::Itertools;
 use regex::Regex;
 use std::convert::TryFrom;
 use std::fs;
 
+#[cfg(test)]
+mod tests;
+
 type Name = String;
 type SpellLevel = u8;
+type Ritual = bool;
 
 pub fn parse_gm_binder(source: &str) -> Spell {
     let spell = fs::read_to_string(source).expect(format!("Failed to read {source}").as_str());
@@ -18,6 +23,11 @@ pub fn parse_gm_binder(source: &str) -> Spell {
         .unwrap()
         .unwrap();
     println!("{:?}", (name, level, school));
+    let (casting_time, ritual, range, components, duration, classes) = spell_groups_iter
+        .next()
+        .map(|group| parse_second_group(group).ok())
+        .unwrap()
+        .unwrap();
     println!("{:?}", spell_groups_iter.next());
     todo!()
 }
@@ -38,6 +48,22 @@ fn split_spell_into_groups(spell: &str) -> Vec<Vec<&str>> {
             _ => None,
         })
         .collect()
+}
+
+fn parse_second_group<'a>(
+    group: &Vec<&str>,
+) -> Result<
+    (
+        CastingTime,
+        Ritual,
+        Range,
+        Components<'a>,
+        Duration,
+        Vec<Classes>,
+    ),
+    (),
+> {
+    todo!()
 }
 
 fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool), ()> {
@@ -82,5 +108,45 @@ impl TryFrom<&str> for MagicSchool {
             "transmutation" => Ok(Transmutation),
             _ => Err(()),
         }
+    }
+}
+
+impl TryFrom<&str> for TimeUnit {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use TimeUnit::*;
+        match value.to_lowercase().as_str() {
+            "round" => Ok(Round),
+            "minute" => Ok(Minute),
+            "hour" => Ok(Hour),
+            "day" => Ok(Day),
+            "year" => Ok(Year),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<&str> for ActionType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use ActionType::*;
+        match value.to_lowercase().as_str() {
+            "bonus action" => Ok(BonusAction),
+            "bonus" => Ok(BonusAction),
+            "action" => Ok(Action),
+            "reaction" => Ok(Reaction),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<&str> for CastingTimeUnit {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use CastingTimeUnit::*;
+        let maybe_action = value.try_into().map(Action);
+        maybe_action.or(value.try_into().map(Time))
     }
 }

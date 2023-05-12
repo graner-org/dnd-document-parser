@@ -37,7 +37,7 @@ impl To5etools for MagicSchool {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CastingTimeUnit {
     Action(ActionType),
     Time(TimeUnit),
