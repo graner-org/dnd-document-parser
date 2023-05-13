@@ -22,7 +22,9 @@ pub fn parse_gm_binder(source: &str) -> Spell {
         .map(|group| parse_first_group(group).ok())
         .unwrap()
         .unwrap();
-    println!("{:?}", (name, level, school));
+    println!("Name: {:?}", name);
+    println!("Level: {:?}", level);
+    println!("School: {:?}", school);
     let (casting_time, ritual, range, components, duration, classes) = spell_groups_iter
         .next()
         .map(|group| parse_second_group(group).ok())
@@ -50,6 +52,117 @@ fn split_spell_into_groups(spell: &str) -> Vec<Vec<&str>> {
         .collect()
 }
 
+fn try_parse_word<'a, T: TryFrom<&'a str>>(word: &'a str) -> Option<T> {
+    word.try_into().ok()
+}
+
+fn strip_str(s: &&str) -> String {
+    // Match everything before `:`, and any symbols after
+    let symbol_regex = Regex::new(r"(.*:|[^a-zA-Z\d])+").unwrap();
+    let symbols_removed = symbol_regex.replace_all(s, " ").to_lowercase();
+    let prefix_removed = symbols_removed
+        .strip_prefix(" ")
+        .map(|s| s.to_owned())
+        .unwrap_or(symbols_removed);
+    prefix_removed
+        .strip_suffix(" ")
+        .map(|s| s.to_owned())
+        .unwrap_or(prefix_removed)
+}
+
+fn parse_casting_time(casting_time_str: &String) -> Result<CastingTime, ()> {
+    let mut words = casting_time_str.split(" ");
+    let number: u8 = words
+        .next()
+        .map(|word| word.parse::<u8>().map_err(|_| ()))
+        .ok_or(())??;
+    let unit = words
+        .next()
+        .map(try_parse_word::<CastingTimeUnit>)
+        .ok_or(())?
+        .ok_or(())?;
+    // If the unit is a reaction, there is an associated condition.
+    let unit = match unit {
+        CastingTimeUnit::Action(ActionType::Reaction { condition: _ }) => {
+            CastingTimeUnit::Action(ActionType::Reaction {
+                condition: words.collect_vec().join(" "),
+            })
+        }
+        _ => unit,
+    };
+    Ok(CastingTime { number, unit })
+}
+
+fn parse_range(range_str: &String) -> Result<Range, ()> {
+    use Range::*;
+    let mut words = range_str.split(" ");
+    // First word is range type
+    match words.next() {
+        Some("touch") => Ok(Touch),
+        Some("special") => Ok(Special),
+        Some("self") => match words.next() {
+            // {range} {unit} {radius|cone}
+            Some(number) => Ok(Ranged {
+                range: number.parse::<u16>().map_err(|_| ())?,
+                unit: words
+                    .next()
+                    .map(try_parse_word::<RangeUnit>)
+                    .ok_or(())?
+                    .ok_or(())?,
+                type_: words
+                    .next()
+                    .map(try_parse_word::<TargetType>)
+                    .ok_or(())?
+                    .ok_or(())?,
+            }),
+            None => Ok(Self_),
+        },
+        Some(number) => Ok(Ranged {
+            range: number.parse::<u16>().map_err(|_| ())?,
+            unit: words.next().ok_or(())?.try_into().map_err(|_| ())?,
+            type_: TargetType::Point,
+        }),
+        None => Err(()),
+    }
+}
+
+fn parse_components<'a>(components_str: String) -> Result<Components<'a>, ()> {
+    let mut words = components_str.split(" ");
+    match words.next() {
+        Some("v") => {
+            let other_components = parse_components(words.join(" "))?;
+            Ok(Components {
+                verbal: true,
+                somatic: other_components.somatic,
+                material: other_components.material,
+            })
+        }
+        Some("s") => {
+            let other_components = parse_components(words.join(" "))?;
+            Ok(Components {
+                verbal: false,
+                somatic: true,
+                material: other_components.material,
+            })
+        }
+        Some("m") => {
+            let remaining_words = words.join(" ");
+            // Parse material component, cost, and consumption
+            todo!();
+            Ok(Components {
+                verbal: false,
+                somatic: false,
+                material: None,
+            })
+        }
+        _ => Ok(Components {
+            verbal: false,
+            somatic: false,
+            material: None,
+        }),
+    }
+}
+
 fn parse_second_group<'a>(
     group: &Vec<&str>,
 ) -> Result<
@@ -63,15 +176,23 @@ fn parse_second_group<'a>(
     ),
     (),
 > {
+    let group = group.iter().map(strip_str).collect_vec();
+    let casting_time: CastingTime = group.get(0).map(parse_casting_time).ok_or(())??;
+    println!("Casting time: {:?}", casting_time);
+    let range = group.get(1).map(parse_range).ok_or(())??;
+    println!("Range: {:?}", range);
+    let components = group
+        .get(2)
+        .map(|s| parse_components(s.to_owned()))
+        .ok_or(());
+    println!("Components: {:?}", components);
+    println!("{:?}", group);
     todo!()
 }
 
 fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool), ()> {
     fn clean_name(raw_name: &&str) -> String {
         raw_name.replace("#### ", "")
-    }
-    fn word_is_school(word: &str) -> Option<MagicSchool> {
-        word.try_into().ok()
     }
     fn char_is_level(c: char) -> Option<SpellLevel> {
         c.to_digit(10).map(|level| level as u8)
@@ -83,7 +204,7 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
 
     let school: MagicSchool = level_and_school
         .split(" ")
-        .find_map(word_is_school)
+        .find_map(try_parse_word::<MagicSchool>)
         .ok_or(())?;
     let level: SpellLevel = level_and_school
         .chars()
@@ -113,15 +234,19 @@ impl TryFrom<&str> for MagicSchool {
 
 impl TryFrom<&str> for TimeUnit {
     type Error = ();
-
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use TimeUnit::*;
         match value.to_lowercase().as_str() {
             "round" => Ok(Round),
+            "rounds" => Ok(Round),
             "minute" => Ok(Minute),
+            "minutes" => Ok(Minute),
             "hour" => Ok(Hour),
+            "hours" => Ok(Hour),
             "day" => Ok(Day),
+            "days" => Ok(Day),
             "year" => Ok(Year),
+            "years" => Ok(Year),
             _ => Err(()),
         }
     }
@@ -129,14 +254,15 @@ impl TryFrom<&str> for TimeUnit {
 
 impl TryFrom<&str> for ActionType {
     type Error = ();
-
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use ActionType::*;
         match value.to_lowercase().as_str() {
             "bonus action" => Ok(BonusAction),
             "bonus" => Ok(BonusAction),
             "action" => Ok(Action),
-            "reaction" => Ok(Reaction),
+            "reaction" => Ok(Reaction {
+                condition: "".to_owned(),
+            }),
             _ => Err(()),
         }
     }
@@ -148,5 +274,32 @@ impl TryFrom<&str> for CastingTimeUnit {
         use CastingTimeUnit::*;
         let maybe_action = value.try_into().map(Action);
         maybe_action.or(value.try_into().map(Time))
+    }
+}
+
+impl TryFrom<&str> for RangeUnit {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use RangeUnit::*;
+        match value.to_lowercase().as_str() {
+            "feet" => Ok(Feet),
+            "foot" => Ok(Feet),
+            "mile" => Ok(Miles),
+            "miles" => Ok(Miles),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<&str> for TargetType {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use TargetType::*;
+        match value.to_lowercase().as_str() {
+            "point" => Ok(Point),
+            "radius" => Ok(Radius),
+            "cone" => Ok(Cone),
+            _ => Err(()),
+        }
     }
 }

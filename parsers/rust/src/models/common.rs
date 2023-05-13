@@ -19,11 +19,11 @@ impl<'a> To5etools for Source<'a> {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ActionType {
     Action,
     BonusAction,
-    Reaction,
+    Reaction { condition: String },
 }
 
 impl To5etools for ActionType {
@@ -47,7 +47,7 @@ pub fn merge_json(json_vec: Vec<Value>) -> Value {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TimeUnit {
     Round,
     Minute,
@@ -87,7 +87,7 @@ impl To5etools for DurationUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RangeUnit {
     Feet,
     Miles,

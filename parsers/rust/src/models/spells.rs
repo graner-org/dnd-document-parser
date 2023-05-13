@@ -37,7 +37,7 @@ impl To5etools for MagicSchool {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CastingTimeUnit {
     Action(ActionType),
     Time(TimeUnit),
@@ -54,7 +54,7 @@ impl To5etools for CastingTimeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TargetType {
     Point,
     Radius,
@@ -73,7 +73,7 @@ impl To5etools for TargetType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Range {
     Self_,
     Touch,
@@ -196,7 +196,7 @@ impl To5etools for Duration {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct CastingTime {
     pub number: u8,
     pub unit: CastingTimeUnit,
@@ -204,10 +204,17 @@ pub struct CastingTime {
 
 impl To5etools for CastingTime {
     fn to_5etools_base(&self) -> Value {
-        json!([{
+        let condition = match &self.unit {
+            CastingTimeUnit::Action(ActionType::Reaction { condition }) => json!({
+                "condition": condition,
+            }),
+            _ => json!({}),
+        };
+        let number_and_unit = json!({
             "number": self.number,
             "unit": self.unit.to_5etools_spell(),
-        }])
+        });
+        json!([merge_json(vec![number_and_unit, condition])])
     }
 }
 
