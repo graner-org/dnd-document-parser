@@ -18,6 +18,7 @@ pub fn parse_gm_binder(source: &str) -> Spell {
     let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(spell.as_str());
     println!("{spell_groups:?}");
     let mut spell_groups_iter = spell_groups.iter();
+    //TODO: Parse rituals here.
     let (name, level, school) = spell_groups_iter
         .next()
         .map(|group| parse_first_group(group).ok())
@@ -26,11 +27,16 @@ pub fn parse_gm_binder(source: &str) -> Spell {
     println!("Name: {:?}", name);
     println!("Level: {:?}", level);
     println!("School: {:?}", school);
-    let (casting_time, ritual, range, components, duration, classes) = spell_groups_iter
+    let (casting_time, range, components, duration, classes) = spell_groups_iter
         .next()
         .map(|group| parse_second_group(group).ok())
         .unwrap()
         .unwrap();
+    println!("Classes: {:?}", classes);
+    println!("Duration: {:?}", duration);
+    println!("Components: {:?}", components);
+    println!("Casting time: {:?}", casting_time);
+    println!("Range: {:?}", range);
     println!("{:?}", spell_groups_iter.next());
     todo!()
 }
@@ -237,39 +243,23 @@ fn parse_classes(classes_str: String) -> Result<Vec<Classes>, ()> {
 
 fn parse_second_group<'a>(
     group: &Vec<&str>,
-) -> Result<
-    (
-        CastingTime,
-        Ritual,
-        Range,
-        Components,
-        TimedDuration,
-        Vec<Classes>,
-    ),
-    (),
-> {
+) -> Result<(CastingTime, Range, Components, Duration, Vec<Classes>), ()> {
     let group = group.iter().map(strip_str).collect_vec();
     let casting_time: CastingTime = group.get(0).map(parse_casting_time).ok_or(())??;
-    println!("Casting time: {:?}", casting_time);
     let range = group.get(1).map(parse_range).ok_or(())??;
-    println!("Range: {:?}", range);
     let components = group
         .get(2)
         .map(|s| parse_components(s.to_owned()))
         .ok_or(())??;
-    println!("Components: {:?}", components);
     let duration = group
         .get(3)
         .map(|s| parse_duration(s.to_owned()))
         .ok_or(())??;
-    println!("Duration: {:?}", duration);
     let classes = group
         .get(4)
         .map(|s| parse_classes(s.to_owned()))
         .ok_or(())??;
-    println!("Classes: {:?}", classes);
-    println!("{:?}", group);
-    todo!()
+    Ok((casting_time, range, components, duration, classes))
 }
 
 fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool), ()> {
