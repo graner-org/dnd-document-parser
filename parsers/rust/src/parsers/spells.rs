@@ -187,6 +187,41 @@ fn parse_components(components_str: String) -> Result<Components, ()> {
     }
 }
 
+fn parse_duration(duration_str: String) -> Result<Duration, ()> {
+    let mut words = duration_str.split(" ");
+    match words.next() {
+        Some("instantaneous") => Ok(Duration::Instantaneous),
+        Some("concentration") => {
+            // Skip all words up to a number.
+            let number = words.find_map(|word| word.parse::<u8>().ok()).ok_or(())?;
+            let unit = words
+                .next()
+                .map(try_parse_word::<TimeUnit>)
+                .ok_or(())?
+                .ok_or(())?;
+            Ok(Duration::Timed(TimedDuration {
+                number,
+                unit,
+                concentration: true,
+            }))
+        }
+        Some(word) => {
+            let number = word.parse::<u8>().map_err(|_| ())?;
+            let unit = words
+                .next()
+                .map(try_parse_word::<TimeUnit>)
+                .ok_or(())?
+                .ok_or(())?;
+            Ok(Duration::Timed(TimedDuration {
+                number,
+                unit,
+                concentration: false,
+            }))
+        }
+        None => Err(()),
+    }
+}
+
 fn parse_second_group<'a>(
     group: &Vec<&str>,
 ) -> Result<
@@ -195,7 +230,7 @@ fn parse_second_group<'a>(
         Ritual,
         Range,
         Components,
-        Duration,
+        TimedDuration,
         Vec<Classes>,
     ),
     (),
@@ -210,6 +245,8 @@ fn parse_second_group<'a>(
         .map(|s| parse_components(s.to_owned()))
         .ok_or(());
     println!("Components: {:?}", components);
+    let duration = group.get(3).map(|s| parse_duration(s.to_owned())).ok_or(());
+    println!("Duration: {:?}", duration);
     println!("{:?}", group);
     todo!()
 }

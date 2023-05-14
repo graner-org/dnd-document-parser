@@ -2,9 +2,10 @@ use super::parse_casting_time;
 use crate::models::common::{ActionType, RangeUnit, TimeUnit};
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::{
-    CastingTime, CastingTimeUnit, Components, MaterialComponent, Range, TargetType,
+    CastingTime, CastingTimeUnit, Components, Duration, MaterialComponent, Range, TargetType,
+    TimedDuration,
 };
-use crate::parsers::spells::{parse_components, parse_range};
+use crate::parsers::spells::{parse_components, parse_duration, parse_range};
 
 #[test]
 fn casting_time_unit_parse_test() {
@@ -148,5 +149,29 @@ fn components_parse_test() {
                 consumed: true
             })
         })
+    );
+}
+
+#[test]
+fn parse_duration_test() {
+    assert_eq!(
+        parse_duration("instantaneous".to_owned()),
+        Ok(Duration::Instantaneous)
+    );
+    assert_eq!(
+        parse_duration("1 round".to_owned()),
+        Ok(Duration::Timed(TimedDuration {
+            number: 1,
+            unit: TimeUnit::Round,
+            concentration: false
+        }))
+    );
+    assert_eq!(
+        parse_duration("concentration up to 10 minutes".to_owned()),
+        Ok(Duration::Timed(TimedDuration {
+            number: 10,
+            unit: TimeUnit::Minute,
+            concentration: true
+        }))
     );
 }
