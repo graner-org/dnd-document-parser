@@ -19,11 +19,11 @@ impl<'a> To5etools for Source<'a> {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ActionType {
     Action,
     BonusAction,
-    Reaction,
+    Reaction { condition: String },
 }
 
 impl To5etools for ActionType {
@@ -47,7 +47,7 @@ pub fn merge_json(json_vec: Vec<Value>) -> Value {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TimeUnit {
     Round,
     Minute,
@@ -70,24 +70,7 @@ impl To5etools for TimeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
-pub enum DurationUnit {
-    Instantaneous,
-    Time(TimeUnit),
-}
-
-impl To5etools for DurationUnit {
-    fn to_5etools_base(&self) -> Value {
-        use DurationUnit::*;
-        match self {
-            Instantaneous => json!("instant"),
-            Time(unit) => unit.to_5etools_base(),
-        }
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RangeUnit {
     Feet,
     Miles,
@@ -143,7 +126,7 @@ impl To5etools for DamageType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Classes {
     Artificer,
     Barbarian,

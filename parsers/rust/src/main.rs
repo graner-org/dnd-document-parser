@@ -23,11 +23,11 @@ fn main() {
             unit: CastingTimeUnit::Action(ActionType::Action),
         },
         ritual: false,
-        duration: Duration {
+        duration: Duration::Timed(TimedDuration {
             number: 1,
-            unit: DurationUnit::Time(TimeUnit::Minute),
+            unit: TimeUnit::Minute,
             concentration: true,
-        },
+        }),
         range: Range::Ranged {
             type_: TargetType::Point,
             range: 60,

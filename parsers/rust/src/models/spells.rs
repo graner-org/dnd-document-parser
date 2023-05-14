@@ -37,7 +37,7 @@ impl To5etools for MagicSchool {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CastingTimeUnit {
     Action(ActionType),
     Time(TimeUnit),
@@ -54,7 +54,7 @@ impl To5etools for CastingTimeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TargetType {
     Point,
     Radius,
@@ -73,7 +73,7 @@ impl To5etools for TargetType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Range {
     Self_,
     Touch,
@@ -113,17 +113,17 @@ impl To5etools for Range {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct MaterialComponent<'a> {
-    pub component: &'a str,
+#[derive(Debug, Clone, PartialEq)]
+pub struct MaterialComponent {
+    pub component: String,
     pub value: Option<ItemValue>,
     pub consumed: bool,
 }
 
-impl<'a> To5etools for MaterialComponent<'a> {
+impl<'a> To5etools for MaterialComponent {
     fn to_5etools_base(&self) -> Value {
         if !self.consumed && self.value.is_none() {
-            self.component.into()
+            json!(self.component)
         } else {
             let text = json!({ "text": self.component });
             let value = match self.value {
@@ -140,14 +140,14 @@ impl<'a> To5etools for MaterialComponent<'a> {
     }
 }
 
-#[derive(Debug)]
-pub struct Components<'a> {
+#[derive(Debug, PartialEq)]
+pub struct Components {
     pub verbal: bool,
     pub somatic: bool,
-    pub material: Option<MaterialComponent<'a>>,
+    pub material: Option<MaterialComponent>,
 }
 
-impl<'a> To5etools for Components<'a> {
+impl<'a> To5etools for Components {
     fn to_5etools_base(&self) -> Value {
         let verbal = match self.verbal {
             true => json!({"v": true}),
@@ -157,7 +157,7 @@ impl<'a> To5etools for Components<'a> {
             true => json!({"s": true}),
             false => json!({}),
         };
-        let material = match self.material {
+        let material = match &self.material {
             Some(material) => json!({ "m": material.to_5etools_spell() }),
             None => json!({}),
         };
@@ -165,38 +165,48 @@ impl<'a> To5etools for Components<'a> {
     }
 }
 
-#[derive(Debug)]
-pub struct Duration {
-    pub number: u8,
-    pub unit: DurationUnit,
-    pub concentration: bool,
+#[derive(Debug, PartialEq)]
+pub enum Duration {
+    Instantaneous,
+    Timed(TimedDuration),
 }
 
 impl To5etools for Duration {
     fn to_5etools_base(&self) -> Value {
-        use DurationUnit::*;
-        let duration = match &self.unit {
-            Instantaneous => json!({"type": self.unit.to_5etools_spell()}),
-            Time(unit) => {
-                let duration = json!({
-                    "type": "timed",
-                    "duration": {
-                        "type": unit.to_5etools_spell(),
-                        "amount": self.number,
-                    }
-                });
-                let concentration = match self.concentration {
-                    true => json!({"concentration": true}),
-                    false => json!({}),
-                };
-                merge_json(vec![duration, concentration])
-            }
+        use Duration::*;
+        let duration = match self {
+            Instantaneous => json!({"type": "instant"}),
+            Timed(duration) => duration.to_5etools_base(),
         };
         json!([duration])
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub struct TimedDuration {
+    pub number: u8,
+    pub unit: TimeUnit,
+    pub concentration: bool,
+}
+
+impl To5etools for TimedDuration {
+    fn to_5etools_base(&self) -> Value {
+        let duration = json!({
+            "type": "timed",
+            "duration": {
+                "type": self.unit.to_5etools_spell(),
+                "amount": self.number,
+            }
+        });
+        let concentration = match self.concentration {
+            true => json!({"concentration": true}),
+            false => json!({}),
+        };
+        merge_json(vec![duration, concentration])
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct CastingTime {
     pub number: u8,
     pub unit: CastingTimeUnit,
@@ -204,10 +214,17 @@ pub struct CastingTime {
 
 impl To5etools for CastingTime {
     fn to_5etools_base(&self) -> Value {
-        json!([{
+        let condition = match &self.unit {
+            CastingTimeUnit::Action(ActionType::Reaction { condition }) => json!({
+                "condition": condition,
+            }),
+            _ => json!({}),
+        };
+        let number_and_unit = json!({
             "number": self.number,
             "unit": self.unit.to_5etools_spell(),
-        }])
+        });
+        json!([merge_json(vec![number_and_unit, condition])])
     }
 }
 
@@ -221,7 +238,7 @@ pub struct Spell<'a> {
     pub ritual: bool,
     pub duration: Duration,
     pub range: Range,
-    pub components: Components<'a>,
+    pub components: Components,
     pub damage_type: Option<Vec<DamageType>>,
     pub description: Vec<&'a str>,
     pub at_higher_levels: Option<&'a str>,

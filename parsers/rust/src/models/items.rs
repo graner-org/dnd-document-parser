@@ -2,7 +2,7 @@ use crate::traits::To5etools;
 use serde_json::{json, Value};
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Currency {
     Copper,
     Silver,
@@ -12,7 +12,7 @@ pub enum Currency {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ItemValue {
     pub value: u32,
     pub unit: Currency,
