@@ -70,23 +70,6 @@ impl To5etools for TimeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
-pub enum DurationUnit {
-    Instantaneous,
-    Time(TimeUnit),
-}
-
-impl To5etools for DurationUnit {
-    fn to_5etools_base(&self) -> Value {
-        use DurationUnit::*;
-        match self {
-            Instantaneous => json!("instant"),
-            Time(unit) => unit.to_5etools_base(),
-        }
-    }
-}
-
-#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum RangeUnit {
     Feet,

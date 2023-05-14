@@ -18,36 +18,18 @@ fn casting_time_test() {
 #[test]
 fn duration_test() {
     assert_eq!(
-        Duration {
-            number: 1,
-            unit: DurationUnit::Instantaneous,
-            concentration: false,
-        }
-        .to_5etools_spell(),
-        json!([{
-            "type": "instant"
-        }])
-    );
-
-    // Instantaneous spells cannot have concentration.
-    assert_eq!(
-        Duration {
-            number: 1,
-            unit: DurationUnit::Instantaneous,
-            concentration: true,
-        }
-        .to_5etools_spell(),
+        Duration::Instantaneous.to_5etools_spell(),
         json!([{
             "type": "instant"
         }])
     );
 
     assert_eq!(
-        Duration {
+        Duration::Timed(TimedDuration {
             number: 1,
-            unit: DurationUnit::Time(TimeUnit::Round),
+            unit: TimeUnit::Round,
             concentration: true,
-        }
+        })
         .to_5etools_spell(),
         json!([{
             "type": "timed",
@@ -183,11 +165,7 @@ fn spell_test() {
             unit: CastingTimeUnit::Action(ActionType::Action),
         },
         ritual: false,
-        duration: Duration {
-            number: 0,
-            unit: DurationUnit::Instantaneous,
-            concentration: false,
-        },
+        duration: Duration::Instantaneous,
         range: Range::Touch,
         components: Components {
             verbal: true,

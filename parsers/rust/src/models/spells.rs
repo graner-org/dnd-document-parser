@@ -165,34 +165,44 @@ impl<'a> To5etools for Components {
     }
 }
 
-#[derive(Debug)]
-pub struct Duration {
-    pub number: u8,
-    pub unit: DurationUnit,
-    pub concentration: bool,
+#[derive(Debug, PartialEq)]
+pub enum Duration {
+    Instantaneous,
+    Timed(TimedDuration),
 }
 
 impl To5etools for Duration {
     fn to_5etools_base(&self) -> Value {
-        use DurationUnit::*;
-        let duration = match &self.unit {
-            Instantaneous => json!({"type": self.unit.to_5etools_spell()}),
-            Time(unit) => {
-                let duration = json!({
-                    "type": "timed",
-                    "duration": {
-                        "type": unit.to_5etools_spell(),
-                        "amount": self.number,
-                    }
-                });
-                let concentration = match self.concentration {
-                    true => json!({"concentration": true}),
-                    false => json!({}),
-                };
-                merge_json(vec![duration, concentration])
-            }
+        use Duration::*;
+        let duration = match self {
+            Instantaneous => json!({"type": "instant"}),
+            Timed(duration) => duration.to_5etools_base(),
         };
         json!([duration])
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TimedDuration {
+    pub number: u8,
+    pub unit: TimeUnit,
+    pub concentration: bool,
+}
+
+impl To5etools for TimedDuration {
+    fn to_5etools_base(&self) -> Value {
+        let duration = json!({
+            "type": "timed",
+            "duration": {
+                "type": self.unit.to_5etools_spell(),
+                "amount": self.number,
+            }
+        });
+        let concentration = match self.concentration {
+            true => json!({"concentration": true}),
+            false => json!({}),
+        };
+        merge_json(vec![duration, concentration])
     }
 }
 
