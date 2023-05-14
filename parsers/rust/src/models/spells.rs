@@ -113,17 +113,17 @@ impl To5etools for Range {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct MaterialComponent<'a> {
-    pub component: &'a str,
+#[derive(Debug, Clone, PartialEq)]
+pub struct MaterialComponent {
+    pub component: String,
     pub value: Option<ItemValue>,
     pub consumed: bool,
 }
 
-impl<'a> To5etools for MaterialComponent<'a> {
+impl<'a> To5etools for MaterialComponent {
     fn to_5etools_base(&self) -> Value {
         if !self.consumed && self.value.is_none() {
-            self.component.into()
+            json!(self.component)
         } else {
             let text = json!({ "text": self.component });
             let value = match self.value {
@@ -140,14 +140,14 @@ impl<'a> To5etools for MaterialComponent<'a> {
     }
 }
 
-#[derive(Debug)]
-pub struct Components<'a> {
+#[derive(Debug, PartialEq)]
+pub struct Components {
     pub verbal: bool,
     pub somatic: bool,
-    pub material: Option<MaterialComponent<'a>>,
+    pub material: Option<MaterialComponent>,
 }
 
-impl<'a> To5etools for Components<'a> {
+impl<'a> To5etools for Components {
     fn to_5etools_base(&self) -> Value {
         let verbal = match self.verbal {
             true => json!({"v": true}),
@@ -157,7 +157,7 @@ impl<'a> To5etools for Components<'a> {
             true => json!({"s": true}),
             false => json!({}),
         };
-        let material = match self.material {
+        let material = match &self.material {
             Some(material) => json!({ "m": material.to_5etools_spell() }),
             None => json!({}),
         };
@@ -228,7 +228,7 @@ pub struct Spell<'a> {
     pub ritual: bool,
     pub duration: Duration,
     pub range: Range,
-    pub components: Components<'a>,
+    pub components: Components,
     pub damage_type: Option<Vec<DamageType>>,
     pub description: Vec<&'a str>,
     pub at_higher_levels: Option<&'a str>,

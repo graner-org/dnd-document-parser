@@ -1,4 +1,5 @@
 use crate::models::common::*;
+use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::*;
 use itertools::Itertools;
 use regex::Regex;
@@ -126,7 +127,7 @@ fn parse_range(range_str: &String) -> Result<Range, ()> {
     }
 }
 
-fn parse_components<'a>(components_str: String) -> Result<Components<'a>, ()> {
+fn parse_components(components_str: String) -> Result<Components, ()> {
     let mut words = components_str.split(" ");
     match words.next() {
         Some("v") => {
@@ -146,13 +147,36 @@ fn parse_components<'a>(components_str: String) -> Result<Components<'a>, ()> {
             })
         }
         Some("m") => {
-            let remaining_words = words.join(" ");
-            // Parse material component, cost, and consumption
-            todo!();
+            let words_vec = words.collect_vec();
+            let component = words_vec.join(" ");
+            let consumed = words_vec.iter().any(|word| word.starts_with("consume"));
+            let value = match words_vec.contains(&"worth") {
+                true => {
+                    let mut words = words_vec.iter();
+                    let value = words
+                        .find(|word| word.parse::<u32>().is_ok())
+                        .ok_or(())?
+                        .parse::<u32>()
+                        .unwrap();
+                    let unit = words
+                        .next()
+                        .map(|word| *word)
+                        .map(try_parse_word::<Currency>)
+                        .ok_or(())?
+                        .ok_or(())?;
+                    Some(ItemValue { value, unit })
+                }
+                false => None,
+            };
+            // Parse cost and consumption
             Ok(Components {
                 verbal: false,
                 somatic: false,
-                material: None,
+                material: Some(MaterialComponent {
+                    component,
+                    value,
+                    consumed,
+                }),
             })
         }
         _ => Ok(Components {
@@ -170,7 +194,7 @@ fn parse_second_group<'a>(
         CastingTime,
         Ritual,
         Range,
-        Components<'a>,
+        Components,
         Duration,
         Vec<Classes>,
     ),
@@ -299,6 +323,26 @@ impl TryFrom<&str> for TargetType {
             "point" => Ok(Point),
             "radius" => Ok(Radius),
             "cone" => Ok(Cone),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<&str> for Currency {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use Currency::*;
+        match value.to_lowercase().as_str() {
+            "cp" => Ok(Copper),
+            "copper" => Ok(Copper),
+            "sp" => Ok(Silver),
+            "silver" => Ok(Silver),
+            "ep" => Ok(Electrum),
+            "electrum" => Ok(Electrum),
+            "gp" => Ok(Gold),
+            "gold" => Ok(Gold),
+            "pp" => Ok(Platinum),
+            "platinume" => Ok(Platinum),
             _ => Err(()),
         }
     }

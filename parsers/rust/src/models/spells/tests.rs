@@ -147,7 +147,7 @@ fn component_test() {
             verbal: true,
             somatic: true,
             material: Some(MaterialComponent {
-                component: "diamonds worth 300 gp, which the spell consumes",
+                component: "diamonds worth 300 gp, which the spell consumes".to_owned(),
                 value: Some(ItemValue {
                     value: 300,
                     unit: Currency::Gold
@@ -193,7 +193,7 @@ fn spell_test() {
             verbal: true,
             somatic: true,
             material: Some(MaterialComponent {
-                component: "diamonds worth 300 gp, which the spell consumes",
+                component: "diamonds worth 300 gp, which the spell consumes".to_owned(),
                 value: Some(ItemValue {
                     value: 300,
                     unit: Currency::Gold,

@@ -1,7 +1,10 @@
 use super::parse_casting_time;
 use crate::models::common::{ActionType, RangeUnit, TimeUnit};
-use crate::models::spells::{CastingTime, CastingTimeUnit, Range, TargetType};
-use crate::parsers::spells::parse_range;
+use crate::models::items::{Currency, ItemValue};
+use crate::models::spells::{
+    CastingTime, CastingTimeUnit, Components, MaterialComponent, Range, TargetType,
+};
+use crate::parsers::spells::{parse_components, parse_range};
 
 #[test]
 fn casting_time_unit_parse_test() {
@@ -77,6 +80,73 @@ fn range_parse_test() {
             type_: TargetType::Cone,
             range: 10,
             unit: RangeUnit::Feet
+        })
+    );
+}
+
+#[test]
+fn components_parse_test() {
+    assert_eq!(
+        parse_components("v s".to_owned()),
+        Ok(Components {
+            verbal: true,
+            somatic: true,
+            material: None
+        })
+    );
+    assert_eq!(
+        parse_components("s".to_owned()),
+        Ok(Components {
+            verbal: false,
+            somatic: true,
+            material: None
+        })
+    );
+    assert_eq!(
+        parse_components("v".to_owned()),
+        Ok(Components {
+            verbal: true,
+            somatic: false,
+            material: None
+        })
+    );
+    assert_eq!(
+        parse_components("v s m component".to_owned()),
+        Ok(Components {
+            verbal: true,
+            somatic: true,
+            material: Some(MaterialComponent {
+                component: "component".to_owned(),
+                value: None,
+                consumed: false
+            })
+        })
+    );
+    assert_eq!(
+        parse_components("v s m component which the spell consumes".to_owned()),
+        Ok(Components {
+            verbal: true,
+            somatic: true,
+            material: Some(MaterialComponent {
+                component: "component which the spell consumes".to_owned(),
+                value: None,
+                consumed: true
+            })
+        })
+    );
+    assert_eq!(
+        parse_components("m component worth 40 pp which the spell consumes".to_owned()),
+        Ok(Components {
+            verbal: false,
+            somatic: false,
+            material: Some(MaterialComponent {
+                component: "component worth 40 pp which the spell consumes".to_owned(),
+                value: Some(ItemValue {
+                    value: 40,
+                    unit: Currency::Platinum
+                }),
+                consumed: true
+            })
         })
     );
 }
