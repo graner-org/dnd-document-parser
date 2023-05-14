@@ -1,11 +1,11 @@
 use super::parse_casting_time;
-use crate::models::common::{ActionType, RangeUnit, TimeUnit};
+use crate::models::common::{ActionType, Classes, RangeUnit, TimeUnit};
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::{
     CastingTime, CastingTimeUnit, Components, Duration, MaterialComponent, Range, TargetType,
     TimedDuration,
 };
-use crate::parsers::spells::{parse_components, parse_duration, parse_range};
+use crate::parsers::spells::{parse_classes, parse_components, parse_duration, parse_range};
 
 #[test]
 fn casting_time_unit_parse_test() {
@@ -174,4 +174,15 @@ fn parse_duration_test() {
             concentration: true
         }))
     );
+}
+
+#[test]
+fn parse_classes_test() {
+    use Classes::*;
+    assert_eq!(
+        parse_classes("wizard warlock".to_owned()),
+        Ok(vec![Wizard, Warlock])
+    );
+    assert_eq!(parse_classes("artificer".to_owned()), Ok(vec![Artificer]));
+    assert_eq!(parse_classes("non_existing_class".to_owned()), Err(()));
 }

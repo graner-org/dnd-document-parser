@@ -126,7 +126,7 @@ impl To5etools for DamageType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Classes {
     Artificer,
     Barbarian,

@@ -222,6 +222,19 @@ fn parse_duration(duration_str: String) -> Result<Duration, ()> {
     }
 }
 
+fn parse_classes(classes_str: String) -> Result<Vec<Classes>, ()> {
+    println!("{classes_str}");
+    let found_classes = classes_str
+        .split(" ")
+        .filter_map(try_parse_word::<Classes>)
+        .collect_vec();
+    if found_classes.is_empty() {
+        Err(())
+    } else {
+        Ok(found_classes)
+    }
+}
+
 fn parse_second_group<'a>(
     group: &Vec<&str>,
 ) -> Result<
@@ -243,10 +256,18 @@ fn parse_second_group<'a>(
     let components = group
         .get(2)
         .map(|s| parse_components(s.to_owned()))
-        .ok_or(());
+        .ok_or(())??;
     println!("Components: {:?}", components);
-    let duration = group.get(3).map(|s| parse_duration(s.to_owned())).ok_or(());
+    let duration = group
+        .get(3)
+        .map(|s| parse_duration(s.to_owned()))
+        .ok_or(())??;
     println!("Duration: {:?}", duration);
+    let classes = group
+        .get(4)
+        .map(|s| parse_classes(s.to_owned()))
+        .ok_or(())??;
+    println!("Classes: {:?}", classes);
     println!("{:?}", group);
     todo!()
 }
@@ -380,6 +401,29 @@ impl TryFrom<&str> for Currency {
             "gold" => Ok(Gold),
             "pp" => Ok(Platinum),
             "platinume" => Ok(Platinum),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<&str> for Classes {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use Classes::*;
+        match value.to_lowercase().as_str() {
+            "artificer" => Ok(Artificer),
+            "barbarian" => Ok(Barbarian),
+            "bard" => Ok(Bard),
+            "cleric" => Ok(Cleric),
+            "druid" => Ok(Druid),
+            "fighter" => Ok(Fighter),
+            "monk" => Ok(Monk),
+            "paladin" => Ok(Paladin),
+            "ranger" => Ok(Ranger),
+            "rogue" => Ok(Rogue),
+            "sorcerer" => Ok(Sorcerer),
+            "warlock" => Ok(Warlock),
+            "wizard" => Ok(Wizard),
             _ => Err(()),
         }
     }
