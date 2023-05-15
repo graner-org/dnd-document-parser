@@ -19,7 +19,7 @@ pub fn parse_gm_binder(source: &str) -> Spell {
     println!("{spell_groups:?}");
     let mut spell_groups_iter = spell_groups.iter();
     //TODO: Parse rituals here.
-    let (name, level, school) = spell_groups_iter
+    let (name, level, school, ritual) = spell_groups_iter
         .next()
         .map(|group| parse_first_group(group).ok())
         .unwrap()
@@ -27,6 +27,7 @@ pub fn parse_gm_binder(source: &str) -> Spell {
     println!("Name: {:?}", name);
     println!("Level: {:?}", level);
     println!("School: {:?}", school);
+    println!("Ritual: {:?}", ritual);
     let (casting_time, range, components, duration, classes) = spell_groups_iter
         .next()
         .map(|group| parse_second_group(group).ok())
@@ -262,7 +263,7 @@ fn parse_second_group<'a>(
     Ok((casting_time, range, components, duration, classes))
 }
 
-fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool), ()> {
+fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool, Ritual), ()> {
     fn clean_name(raw_name: &&str) -> String {
         raw_name.replace("#### ", "")
     }
@@ -271,8 +272,8 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
     }
     // The name is the first line of the group.
     let name = group.get(0).map(clean_name).ok_or(())?;
-    // The second line contains spell level and school.
-    let level_and_school = group.get(1).ok_or(())?.replace("*", "");
+    // The second line contains spell level and school, as well as whether the spell is a ritual.
+    let level_and_school = strip_str(&group.get(1).ok_or(())?);
 
     let school: MagicSchool = level_and_school
         .split(" ")
@@ -282,7 +283,9 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
         .chars()
         .find_map(char_is_level)
         .unwrap_or(0);
-    Ok((name, level, school))
+    let ritual: Ritual = level_and_school.split(" ").contains(&"ritual");
+    println!("{:?}", level_and_school.split(" ").collect_vec());
+    Ok((name, level, school, ritual))
 }
 
 impl TryFrom<&str> for MagicSchool {
