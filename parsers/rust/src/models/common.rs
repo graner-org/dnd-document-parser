@@ -87,7 +87,7 @@ impl To5etools for RangeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DamageType {
     Acid,
     Bludgeoning,

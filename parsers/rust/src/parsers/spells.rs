@@ -13,33 +13,41 @@ type Name = String;
 type SpellLevel = u8;
 type Ritual = bool;
 
-pub fn parse_gm_binder(source: &str) -> Spell {
+pub fn parse_gm_binder(source: &str) -> Result<Spell, ()> {
     let spell = fs::read_to_string(source).expect(format!("Failed to read {source}").as_str());
     let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(spell.as_str());
-    println!("{spell_groups:?}");
     let mut spell_groups_iter = spell_groups.iter();
     //TODO: Parse rituals here.
     let (name, level, school, ritual) = spell_groups_iter
         .next()
         .map(|group| parse_first_group(group).ok())
-        .unwrap()
-        .unwrap();
-    println!("Name: {:?}", name);
-    println!("Level: {:?}", level);
-    println!("School: {:?}", school);
-    println!("Ritual: {:?}", ritual);
+        .flatten()
+        .ok_or(())?;
     let (casting_time, range, components, duration, classes) = spell_groups_iter
         .next()
         .map(|group| parse_second_group(group).ok())
-        .unwrap()
-        .unwrap();
-    println!("Classes: {:?}", classes);
-    println!("Duration: {:?}", duration);
-    println!("Components: {:?}", components);
-    println!("Casting time: {:?}", casting_time);
-    println!("Range: {:?}", range);
-    println!("{:?}", spell_groups_iter.next());
-    todo!()
+        .flatten()
+        .ok_or(())?;
+    let (damage_types, description, at_higher_levels) =
+        parse_entries(spell_groups_iter).map_err(|_| ())?;
+    Ok(Spell {
+        source: Source {
+            source_book: "book",
+            page: 0,
+        },
+        name,
+        level,
+        school,
+        casting_time,
+        ritual,
+        duration,
+        range,
+        components,
+        damage_types,
+        description,
+        at_higher_levels,
+        classes,
+    })
 }
 
 fn split_spell_into_groups(spell: &str) -> Vec<Vec<&str>> {
@@ -230,7 +238,6 @@ fn parse_duration(duration_str: String) -> Result<Duration, ()> {
 }
 
 fn parse_classes(classes_str: String) -> Result<Vec<Classes>, ()> {
-    println!("{classes_str}");
     let found_classes = classes_str
         .split(" ")
         .filter_map(try_parse_word::<Classes>)
@@ -240,6 +247,62 @@ fn parse_classes(classes_str: String) -> Result<Vec<Classes>, ()> {
     } else {
         Ok(found_classes)
     }
+}
+
+fn parse_entries<'a, I>(
+    all_entries: I,
+) -> Result<(Option<Vec<DamageType>>, Vec<String>, Option<String>), ()>
+where
+    I: Iterator<Item = &'a Vec<&'a str>>,
+{
+    // Normal entries don't start with **, but "at higher level"-entries do
+    let entries_by_type = all_entries
+        .filter_map(|group| group.get(0))
+        .group_by(|entry| entry.starts_with("**"));
+    let main_entries = entries_by_type
+        .into_iter()
+        .map(
+            // Collapse normal entries into one group.
+            |(key, entry)| {
+                (
+                    key,
+                    entry.cloned().map(|entry| entry.to_owned()).collect_vec(),
+                )
+            },
+        )
+        .find(|(key, _)| !*key) // Get the first group (which we just collapsed)
+        .unzip() // We are not interested in the key
+        .1
+        .ok_or(())?;
+    let damage_types = main_entries
+        .clone()
+        .into_iter()
+        .flat_map(|entry| {
+            entry
+                .split(" ")
+                .filter_map(try_parse_word::<DamageType>)
+                .collect_vec()
+        })
+        .collect_vec();
+    let damage_types = if damage_types.is_empty() {
+        None
+    } else {
+        Some(damage_types)
+    };
+    // Coerce into needed format.
+    let at_higher_levels = entries_by_type
+        .into_iter()
+        .next()
+        .map(|(_, group)| group.into_iter().cloned().next())
+        .flatten()
+        .map(|entry| {
+            entry
+                .split(" ")
+                .filter(|group| !group.is_empty()) // Collapse multiple whitespaces
+                .dropping(3)
+                .join(" ")
+        });
+    Ok((damage_types, main_entries, at_higher_levels))
 }
 
 fn parse_second_group<'a>(
@@ -284,7 +347,6 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
         .find_map(char_is_level)
         .unwrap_or(0);
     let ritual: Ritual = level_and_school.split(" ").contains(&"ritual");
-    println!("{:?}", level_and_school.split(" ").collect_vec());
     Ok((name, level, school, ritual))
 }
 
@@ -417,6 +479,29 @@ impl TryFrom<&str> for Classes {
             "sorcerer" => Ok(Sorcerer),
             "warlock" => Ok(Warlock),
             "wizard" => Ok(Wizard),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<&str> for DamageType {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use DamageType::*;
+        match value.to_lowercase().as_str() {
+            "acid" => Ok(Acid),
+            "bludgeoning" => Ok(Bludgeoning),
+            "cold" => Ok(Cold),
+            "fire" => Ok(Fire),
+            "force" => Ok(Force),
+            "lightning" => Ok(Lightning),
+            "necrotic" => Ok(Necrotic),
+            "piercing" => Ok(Piercing),
+            "poison" => Ok(Poison),
+            "psychic" => Ok(Psychic),
+            "radiant" => Ok(Radiant),
+            "slashing" => Ok(Slashing),
+            "thunder" => Ok(Thunder),
             _ => Err(()),
         }
     }
