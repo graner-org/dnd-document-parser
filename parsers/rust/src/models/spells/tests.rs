@@ -157,7 +157,7 @@ fn spell_test() {
             source_book: "PHB",
             page: 272,
         },
-        name: "Revivify",
+        name: "Revivify".to_owned(),
         level: 3,
         school: MagicSchool::Necromancy,
         casting_time: CastingTime {
@@ -179,8 +179,8 @@ fn spell_test() {
                 consumed: true,
             }),
         },
-        damage_type: None,
-        description: vec!["You touch a creature that has died within the last minute. That creature returns to life with 1 hit point. This spell can't return to life a creature that has died of old age, nor can it restore any missing body parts."],
+        damage_types: None,
+        description: vec!["You touch a creature that has died within the last minute. That creature returns to life with 1 hit point. This spell can't return to life a creature that has died of old age, nor can it restore any missing body parts.".to_owned()],
         at_higher_levels: None,
         classes: vec![Classes::Cleric, Classes::Paladin, Classes::Artificer],
     };

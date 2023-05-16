@@ -1,11 +1,13 @@
-use super::parse_casting_time;
-use crate::models::common::{ActionType, Classes, RangeUnit, TimeUnit};
+use super::{parse_casting_time, parse_entries};
+use crate::models::common::{ActionType, Classes, DamageType, RangeUnit, TimeUnit};
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::{
     CastingTime, CastingTimeUnit, Components, Duration, MaterialComponent, Range, TargetType,
     TimedDuration,
 };
-use crate::parsers::spells::{parse_classes, parse_components, parse_duration, parse_range};
+use crate::parsers::spells::{
+    parse_classes, parse_components, parse_duration, parse_range, split_spell_into_groups,
+};
 
 #[test]
 fn casting_time_unit_parse_test() {
@@ -185,4 +187,43 @@ fn parse_classes_test() {
     );
     assert_eq!(parse_classes("artificer".to_owned()), Ok(vec![Artificer]));
     assert_eq!(parse_classes("non_existing_class".to_owned()), Err(()));
+}
+
+#[test]
+fn parse_entries_test() {
+    use DamageType::*;
+    assert_eq!(
+        parse_entries(
+            vec![
+                vec!["entry 1"],
+                vec!["entry 2"],
+                vec!["**At higher levels.**  Entry 3"],
+            ]
+            .iter()
+        ),
+        Ok((
+            None,
+            vec!["entry 1".to_owned(), "entry 2".to_owned()],
+            Some("Entry 3".to_owned())
+        )),
+    );
+    assert_eq!(
+        parse_entries(
+            vec![
+                vec!["AcId 1"],
+                vec!["entry neCRotic 2"],
+                vec!["**At higher levels.** Entry 3"],
+            ]
+            .iter()
+        ),
+        Ok((
+            Some(vec![Acid, Necrotic]),
+            vec!["AcId 1".to_owned(), "entry neCRotic 2".to_owned()],
+            Some("Entry 3".to_owned())
+        )),
+    );
+    assert_eq!(
+        parse_entries(vec![vec!["entry 1"], vec!["entry 2"],].iter()),
+        Ok((None, vec!["entry 1".to_owned(), "entry 2".to_owned()], None)),
+    );
 }

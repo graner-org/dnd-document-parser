@@ -231,7 +231,7 @@ impl To5etools for CastingTime {
 #[derive(Debug)]
 pub struct Spell<'a> {
     pub source: Source<'a>,
-    pub name: &'a str,
+    pub name: String,
     pub level: u8,
     pub school: MagicSchool,
     pub casting_time: CastingTime,
@@ -239,9 +239,9 @@ pub struct Spell<'a> {
     pub duration: Duration,
     pub range: Range,
     pub components: Components,
-    pub damage_type: Option<Vec<DamageType>>,
-    pub description: Vec<&'a str>,
-    pub at_higher_levels: Option<&'a str>,
+    pub damage_types: Option<Vec<DamageType>>,
+    pub description: Vec<String>,
+    pub at_higher_levels: Option<String>,
     pub classes: Vec<Classes>,
 }
 
@@ -261,13 +261,13 @@ impl<'a> To5etools for Spell<'a> {
                 "fromClassList": self.classes.to_5etools_spell()
             }),
         });
-        let damage_type = match &self.damage_type {
+        let damage_type = match &self.damage_types {
             Some(damage_types) => json!({
                 "damageInflict": damage_types.to_5etools_spell(),
             }),
             None => json!({}),
         };
-        let at_higher_levels = match self.at_higher_levels {
+        let at_higher_levels = match &self.at_higher_levels {
             Some(entries) => json!({
                 "entriesHigherLevel": [{
                     "type": "entries",
