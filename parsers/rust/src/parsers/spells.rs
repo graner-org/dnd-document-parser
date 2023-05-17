@@ -13,8 +13,9 @@ type Name = String;
 type SpellLevel = u8;
 type Ritual = bool;
 
-pub fn parse_gm_binder(source: &str) -> Result<Spell, ()> {
-    let spell = fs::read_to_string(source).expect(format!("Failed to read {source}").as_str());
+pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell, ()> {
+    let spell = fs::read_to_string(source_file.clone())
+        .expect(format!("Failed to read {source_file}").as_str());
     let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(spell.as_str());
     let mut spell_groups_iter = spell_groups.iter();
     //TODO: Parse rituals here.
@@ -31,10 +32,7 @@ pub fn parse_gm_binder(source: &str) -> Result<Spell, ()> {
     let (damage_types, description, at_higher_levels) =
         parse_entries(spell_groups_iter).map_err(|_| ())?;
     Ok(Spell {
-        source: Source {
-            source_book: "book",
-            page: 0,
-        },
+        source: source_book,
         name,
         level,
         school,
