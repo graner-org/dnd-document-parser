@@ -13,8 +13,9 @@ type Name = String;
 type SpellLevel = u8;
 type Ritual = bool;
 
-pub fn parse_gm_binder(source: &str) -> Result<Spell, ()> {
-    let spell = fs::read_to_string(source).expect(format!("Failed to read {source}").as_str());
+pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell, ()> {
+    let spell = fs::read_to_string(source_file.clone())
+        .expect(format!("Failed to read {source_file}").as_str());
     let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(spell.as_str());
     let mut spell_groups_iter = spell_groups.iter();
     //TODO: Parse rituals here.
@@ -31,10 +32,7 @@ pub fn parse_gm_binder(source: &str) -> Result<Spell, ()> {
     let (damage_types, description, at_higher_levels) =
         parse_entries(spell_groups_iter).map_err(|_| ())?;
     Ok(Spell {
-        source: Source {
-            source_book: "book",
-            page: 0,
-        },
+        source: source_book,
         name,
         level,
         school,
@@ -143,63 +141,79 @@ fn parse_range(range_str: &String) -> Result<Range, ()> {
 }
 
 fn parse_components(components_str: String) -> Result<Components, ()> {
-    let mut words = components_str.split(" ");
-    match words.next() {
-        Some("v") => {
-            let other_components = parse_components(words.join(" "))?;
-            Ok(Components {
-                verbal: true,
-                somatic: other_components.somatic,
-                material: other_components.material,
-            })
-        }
-        Some("s") => {
-            let other_components = parse_components(words.join(" "))?;
-            Ok(Components {
-                verbal: false,
-                somatic: true,
-                material: other_components.material,
-            })
-        }
-        Some("m") => {
-            let words_vec = words.collect_vec();
-            let component = words_vec.join(" ");
-            let consumed = words_vec.iter().any(|word| word.starts_with("consume"));
-            let value = match words_vec.contains(&"worth") {
-                true => {
-                    let mut words = words_vec.iter();
-                    let value = words
-                        .find(|word| word.parse::<u32>().is_ok())
-                        .ok_or(())?
-                        .parse::<u32>()
-                        .unwrap();
-                    let unit = words
-                        .next()
-                        .map(|word| *word)
-                        .map(try_parse_word::<Currency>)
-                        .ok_or(())?
-                        .ok_or(())?;
-                    Some(ItemValue { value, unit })
-                }
-                false => None,
-            };
-            // Parse cost and consumption
-            Ok(Components {
+    let stripped_components_str = strip_str(&components_str.as_str());
+    fn parse_components_helper(
+        stripped_str: String,
+        original_str: String,
+    ) -> Result<Components, ()> {
+        let mut stripped_words = stripped_str.split(" ");
+        match stripped_words.next() {
+            Some("v") => {
+                let other_components =
+                    parse_components_helper(stripped_words.join(" "), original_str)?;
+                Ok(Components {
+                    verbal: true,
+                    somatic: other_components.somatic,
+                    material: other_components.material,
+                })
+            }
+            Some("s") => {
+                let other_components =
+                    parse_components_helper(stripped_words.join(" "), original_str)?;
+                Ok(Components {
+                    verbal: false,
+                    somatic: true,
+                    material: other_components.material,
+                })
+            }
+            Some("m") => {
+                let words_vec = original_str
+                    .split(" ")
+                    .skip_while(|word| word.to_lowercase() != "m")
+                    .skip(1)
+                    .map(|word| word.replace("(", "").replace(")", ""))
+                    .collect_vec();
+                let component = words_vec.join(" ");
+                let consumed = words_vec
+                    .iter()
+                    .any(|word| word.to_lowercase().starts_with("consume"));
+                let value = match words_vec.iter().contains(&"worth".to_owned()) {
+                    true => {
+                        let mut words = stripped_str.split(" ");
+                        let value = words
+                            .find(|word| word.parse::<u32>().is_ok())
+                            .ok_or(())?
+                            .parse::<u32>()
+                            .unwrap();
+                        let unit = words
+                            .next()
+                            .map(|word| word)
+                            .map(try_parse_word::<Currency>)
+                            .ok_or(())?
+                            .ok_or(())?;
+                        Some(ItemValue { value, unit })
+                    }
+                    false => None,
+                };
+                // Parse cost and consumption
+                Ok(Components {
+                    verbal: false,
+                    somatic: false,
+                    material: Some(MaterialComponent {
+                        component,
+                        value,
+                        consumed,
+                    }),
+                })
+            }
+            _ => Ok(Components {
                 verbal: false,
                 somatic: false,
-                material: Some(MaterialComponent {
-                    component,
-                    value,
-                    consumed,
-                }),
-            })
+                material: None,
+            }),
         }
-        _ => Ok(Components {
-            verbal: false,
-            somatic: false,
-            material: None,
-        }),
     }
+    parse_components_helper(stripped_components_str, components_str)
 }
 
 fn parse_duration(duration_str: String) -> Result<Duration, ()> {
@@ -308,22 +322,22 @@ where
 fn parse_second_group<'a>(
     group: &Vec<&str>,
 ) -> Result<(CastingTime, Range, Components, Duration, Vec<Classes>), ()> {
-    let group = group.iter().map(strip_str).collect_vec();
-    let casting_time: CastingTime = group.get(0).map(parse_casting_time).ok_or(())??;
-    let range = group.get(1).map(parse_range).ok_or(())??;
+    let group_stripped = group.iter().map(strip_str).collect_vec();
+    let casting_time: CastingTime = group_stripped.get(0).map(parse_casting_time).ok_or(())??;
+    let range = group_stripped.get(1).map(parse_range).ok_or(())??;
     let components = group
         .get(2)
-        .map(|s| parse_components(s.to_owned()))
-        .ok_or(())??;
-    let duration = group
+        .map(|s| parse_components(s.to_owned().to_owned()))
+        .ok_or(());
+    let duration = group_stripped
         .get(3)
         .map(|s| parse_duration(s.to_owned()))
         .ok_or(())??;
-    let classes = group
+    let classes = group_stripped
         .get(4)
         .map(|s| parse_classes(s.to_owned()))
         .ok_or(())??;
-    Ok((casting_time, range, components, duration, classes))
+    Ok((casting_time, range, components??, duration, classes))
 }
 
 fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool, Ritual), ()> {
