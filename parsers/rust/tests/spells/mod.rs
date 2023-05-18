@@ -23,5 +23,6 @@ fn gmbinder_integration_test() {
         .map(|spell| spell.to_5etools_spell())
         .unwrap();
     let expected_json = read_json_file(expected_source);
-    assert_eq!(parsed_spell, expected_json)
+    let expected_json = expected_json.get("spell").map(|val| val.get(0)).flatten();
+    assert_eq!(Some(&parsed_spell), expected_json)
 }
