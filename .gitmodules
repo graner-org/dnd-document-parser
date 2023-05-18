@@ -1,0 +1,3 @@
+[submodule "parsers/rust/resources/5etools-utils"]
+	path = 5etools-utils
+	url = git@github.com:TheGiddyLimit/5etools-utils
