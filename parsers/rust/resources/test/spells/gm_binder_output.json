@@ -1,76 +1,96 @@
 {
-  "name": "Ray of Necromancy",
-  "source": "test-source",
-  "page": 0,
-  "level": 2,
-  "school": "N",
-  "time": [
-    {
-      "number": 1,
-      "unit": "minute"
-    }
-  ],
-  "range": {
-    "type": "radius",
-    "distance": {
-      "type": "feet",
-      "amount": 60
-    }
-  },
-  "components": {
-    "v": true,
-    "s": true,
-    "m": {
-      "text": "diamonds worth 300 gp, which the spell consumes",
-      "cost": 30000,
-      "consume": true
-    }
-  },
-  "duration": [
-    {
-      "type": "timed",
-      "duration": {
-        "type": "minute",
-        "amount": 1
-      },
-      "concentration": true
-    }
-  ],
-  "entries": [
-    "Make a ranged spell attack against the target. On a hit, the creature takes 2d4 necrotic damage.",
-    "At the end of each of the target’s turns, it can make a Constitution saving throw against the spell. On a success, the spell ends for the target."
-  ],
-  "entriesHigherLevel": [
-    {
-      "type": "entries",
-      "name": "At Higher Levels",
-      "entries": [
-        "When you cast this spell using a spell slot of 3rd level or higher, you may produce one additional ray for every level above 2nd level."
-      ]
-    }
-  ],
-  "damageInflict": ["necrotic"],
-  "classes": {
-    "fromClassList": [
+  "_meta": {
+    "sources": [
       {
-        "name": "Artificer",
-        "source": "TCE"
-      },
-      {
-        "name": "Sorcerer",
-        "source": "PHB"
-      },
-      {
-        "name": "Warlock",
-        "source": "PHB"
-      },
-      {
-        "name": "Wizard",
-        "source": "PHB"
+        "json": "",
+        "abbreviation": "",
+        "full": "",
+        "authors": [""],
+        "convertedBy": [""],
+        "version": "1.0",
+        "url": "test_url",
+        "targetSchema": "1.0"
       }
-    ]
+    ],
+    "dateAdded": 0,
+    "dateLastModified": 0
   },
-  "meta": {
-    "ritual": true
-  }
+  "spell": [
+    {
+      "name": "Ray of Necromancy",
+      "source": "test-source",
+      "page": 0,
+      "level": 2,
+      "school": "N",
+      "time": [
+        {
+          "number": 1,
+          "unit": "minute"
+        }
+      ],
+      "range": {
+        "type": "radius",
+        "distance": {
+          "type": "feet",
+          "amount": 60
+        }
+      },
+      "components": {
+        "v": true,
+        "s": true,
+        "m": {
+          "text": "diamonds worth 300 gp, which the spell consumes",
+          "cost": 30000,
+          "consume": true
+        }
+      },
+      "duration": [
+        {
+          "type": "timed",
+          "duration": {
+            "type": "minute",
+            "amount": 1
+          },
+          "concentration": true
+        }
+      ],
+      "entries": [
+        "Make a ranged spell attack against the target. On a hit, the creature takes 2d4 necrotic damage.",
+        "At the end of each of the target’s turns, it can make a Constitution saving throw against the spell. On a success, the spell ends for the target."
+      ],
+      "entriesHigherLevel": [
+        {
+          "type": "entries",
+          "name": "At Higher Levels",
+          "entries": [
+            "When you cast this spell using a spell slot of 3rd level or higher, you may produce one additional ray for every level above 2nd level."
+          ]
+        }
+      ],
+      "damageInflict": ["necrotic"],
+      "classes": {
+        "fromClassList": [
+          {
+            "name": "Artificer",
+            "source": "TCE"
+          },
+          {
+            "name": "Sorcerer",
+            "source": "PHB"
+          },
+          {
+            "name": "Warlock",
+            "source": "PHB"
+          },
+          {
+            "name": "Wizard",
+            "source": "PHB"
+          }
+        ]
+      },
+      "meta": {
+        "ritual": true
+      }
+    }
+  ]
 }
