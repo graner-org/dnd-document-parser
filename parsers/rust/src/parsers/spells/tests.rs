@@ -1,19 +1,18 @@
 use super::{parse_casting_time, parse_entries};
+use crate::error::ParseError;
 use crate::models::common::{ActionType, Classes, DamageType, RangeUnit, TimeUnit};
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::{
     CastingTime, CastingTimeUnit, Components, Duration, MaterialComponent, Range, TargetType,
     TimedDuration,
 };
-use crate::parsers::spells::{
-    parse_classes, parse_components, parse_duration, parse_range, split_spell_into_groups,
-};
+use crate::parsers::spells::{parse_classes, parse_components, parse_duration, parse_range};
 
 #[test]
 fn casting_time_unit_parse_test() {
     use CastingTimeUnit::*;
     use TimeUnit::Hour;
-    type Res = Result<CastingTimeUnit, ()>;
+    type Res = Result<CastingTimeUnit, ParseError>;
     let action: Res = "action".try_into();
     let reaction: Res = "reaction".try_into();
     let hour: Res = "hour".try_into();
@@ -27,7 +26,14 @@ fn casting_time_unit_parse_test() {
         }))
     );
     assert_eq!(hour, Ok(Time(Hour)));
-    assert_eq!(fail, Err(()));
+    assert_eq!(
+        fail,
+        Err(ParseError {
+            string: "fail".to_owned(),
+            parsing_step: "CastingTimeUnit".to_owned(),
+            problem: Some("Neither ActionType nor TimeUnit".to_owned())
+        })
+    );
 }
 
 #[test]

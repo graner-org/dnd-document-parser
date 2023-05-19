@@ -1,14 +1,14 @@
 use serde_json::Error as JSONError;
 use std::io::Error as IOError;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ParseError {
     pub string: String,
     pub parsing_step: String,
     pub problem: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct OutOfBoundsError {
     pub array: Vec<String>,
     pub parsing_step: String,

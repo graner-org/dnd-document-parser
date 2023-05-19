@@ -1,3 +1,4 @@
+use crate::error::{Error, OutOfBoundsError, ParseError};
 use crate::models::common::*;
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::*;
@@ -340,7 +341,7 @@ fn parse_second_group<'a>(
     Ok((casting_time, range, components??, duration, classes))
 }
 
-fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool, Ritual), ()> {
+fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool, Ritual), Error> {
     fn clean_name(raw_name: &&str) -> String {
         raw_name.replace("#### ", "")
     }
@@ -348,14 +349,37 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
         c.to_digit(10).map(|level| level as u8)
     }
     // The name is the first line of the group.
-    let name = group.get(0).map(clean_name).ok_or(())?;
+    let name = group
+        .get(0)
+        .ok_or(OutOfBoundsError {
+            array: group
+                .into_iter()
+                .map(|s| s.to_owned().to_owned())
+                .collect_vec(),
+            parsing_step: "Name".to_owned(),
+            problem: Some("Array length less than 0".to_owned()),
+        })
+        .map(clean_name)?;
     // The second line contains spell level and school, as well as whether the spell is a ritual.
-    let level_and_school = strip_str(&group.get(1).ok_or(())?);
+    let level_and_school = strip_str(
+        &group.get(1).ok_or(OutOfBoundsError {
+            array: group
+                .into_iter()
+                .map(|s| s.to_owned().to_owned())
+                .collect_vec(),
+            parsing_step: "Level and School".to_owned(),
+            problem: Some("Array length less than 1".to_owned()),
+        })?,
+    );
 
     let school: MagicSchool = level_and_school
         .split(" ")
         .find_map(try_parse_word::<MagicSchool>)
-        .ok_or(())?;
+        .ok_or(ParseError {
+            string: level_and_school.clone(),
+            parsing_step: "School of Magic".to_owned(),
+            problem: None,
+        })?;
     let level: SpellLevel = level_and_school
         .chars()
         .find_map(char_is_level)
@@ -365,8 +389,7 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
 }
 
 impl TryFrom<&str> for MagicSchool {
-    type Error = ();
-
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use MagicSchool::*;
         match value.to_lowercase().as_str() {
@@ -378,13 +401,17 @@ impl TryFrom<&str> for MagicSchool {
             "illusion" => Ok(Illusion),
             "necromancy" => Ok(Necromancy),
             "transmutation" => Ok(Transmutation),
-            _ => Err(()),
+            _ => Err(ParseError {
+                string: value.to_owned(),
+                parsing_step: "MagicSchool".to_owned(),
+                problem: None,
+            }),
         }
     }
 }
 
 impl TryFrom<&str> for TimeUnit {
-    type Error = ();
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use TimeUnit::*;
         match value.to_lowercase().as_str() {
@@ -398,13 +425,17 @@ impl TryFrom<&str> for TimeUnit {
             "days" => Ok(Day),
             "year" => Ok(Year),
             "years" => Ok(Year),
-            _ => Err(()),
+            _ => Err(ParseError {
+                string: value.to_owned(),
+                parsing_step: "TimeUnit".to_owned(),
+                problem: None,
+            }),
         }
     }
 }
 
 impl TryFrom<&str> for ActionType {
-    type Error = ();
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use ActionType::*;
         match value.to_lowercase().as_str() {
@@ -414,22 +445,32 @@ impl TryFrom<&str> for ActionType {
             "reaction" => Ok(Reaction {
                 condition: "".to_owned(),
             }),
-            _ => Err(()),
+            _ => Err(ParseError {
+                string: value.to_owned(),
+                parsing_step: "ActionType".to_owned(),
+                problem: None,
+            }),
         }
     }
 }
 
 impl TryFrom<&str> for CastingTimeUnit {
-    type Error = ();
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use CastingTimeUnit::*;
         let maybe_action = value.try_into().map(Action);
-        maybe_action.or(value.try_into().map(Time))
+        maybe_action
+            .or(value.try_into().map(Time))
+            .map_err(|error| ParseError {
+                string: error.string,
+                parsing_step: "CastingTimeUnit".to_owned(),
+                problem: Some("Neither ActionType nor TimeUnit".to_owned()),
+            })
     }
 }
 
 impl TryFrom<&str> for RangeUnit {
-    type Error = ();
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use RangeUnit::*;
         match value.to_lowercase().as_str() {
@@ -437,26 +478,34 @@ impl TryFrom<&str> for RangeUnit {
             "foot" => Ok(Feet),
             "mile" => Ok(Miles),
             "miles" => Ok(Miles),
-            _ => Err(()),
+            _ => Err(ParseError {
+                string: value.to_owned(),
+                parsing_step: "RangeUnit".to_owned(),
+                problem: None,
+            }),
         }
     }
 }
 
 impl TryFrom<&str> for TargetType {
-    type Error = ();
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use TargetType::*;
         match value.to_lowercase().as_str() {
             "point" => Ok(Point),
             "radius" => Ok(Radius),
             "cone" => Ok(Cone),
-            _ => Err(()),
+            _ => Err(ParseError {
+                string: value.to_owned(),
+                parsing_step: "TargetType".to_owned(),
+                problem: None,
+            }),
         }
     }
 }
 
 impl TryFrom<&str> for Currency {
-    type Error = ();
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use Currency::*;
         match value.to_lowercase().as_str() {
@@ -470,13 +519,17 @@ impl TryFrom<&str> for Currency {
             "gold" => Ok(Gold),
             "pp" => Ok(Platinum),
             "platinume" => Ok(Platinum),
-            _ => Err(()),
+            _ => Err(ParseError {
+                string: value.to_owned(),
+                parsing_step: "Currency".to_owned(),
+                problem: None,
+            }),
         }
     }
 }
 
 impl TryFrom<&str> for Classes {
-    type Error = ();
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use Classes::*;
         match value.to_lowercase().as_str() {
@@ -493,13 +546,17 @@ impl TryFrom<&str> for Classes {
             "sorcerer" => Ok(Sorcerer),
             "warlock" => Ok(Warlock),
             "wizard" => Ok(Wizard),
-            _ => Err(()),
+            _ => Err(ParseError {
+                string: value.to_owned(),
+                parsing_step: "Classes".to_owned(),
+                problem: None,
+            }),
         }
     }
 }
 
 impl TryFrom<&str> for DamageType {
-    type Error = ();
+    type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use DamageType::*;
         match value.to_lowercase().as_str() {
@@ -516,7 +573,11 @@ impl TryFrom<&str> for DamageType {
             "radiant" => Ok(Radiant),
             "slashing" => Ok(Slashing),
             "thunder" => Ok(Thunder),
-            _ => Err(()),
+            _ => Err(ParseError {
+                string: value.to_owned(),
+                parsing_step: "DamageType".to_owned(),
+                problem: None,
+            }),
         }
     }
 }
