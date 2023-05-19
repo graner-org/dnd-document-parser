@@ -67,10 +67,6 @@ fn split_spell_into_groups(spell: &str) -> Vec<Vec<&str>> {
         .collect()
 }
 
-fn try_parse_word<'a, T: TryFrom<&'a str>>(word: &'a str) -> Option<T> {
-    word.try_into().ok()
-}
-
 fn strip_str(s: &&str) -> String {
     // Match everything before `:`, and any symbols after
     let symbol_regex = Regex::new(r"(.*:|[^a-zA-Z\d])+").unwrap();
@@ -348,7 +344,7 @@ fn parse_duration(duration_str: String) -> Result<Duration, Error> {
 fn parse_classes(classes_str: String) -> Result<Vec<Classes>, Error> {
     let found_classes = classes_str
         .split(" ")
-        .filter_map(try_parse_word::<Classes>)
+        .flat_map(Classes::try_from)
         .collect_vec();
     if found_classes.is_empty() {
         Err(ParseError {
@@ -393,7 +389,7 @@ where
         .flat_map(|entry| {
             entry
                 .split(" ")
-                .filter_map(try_parse_word::<DamageType>)
+                .flat_map(DamageType::try_from)
                 .collect_vec()
         })
         .collect_vec();
@@ -483,7 +479,8 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
 
     let school: MagicSchool = level_and_school
         .split(" ")
-        .find_map(try_parse_word::<MagicSchool>)
+        .flat_map(MagicSchool::try_from)
+        .next()
         .ok_or(ParseError {
             string: level_and_school.clone(),
             parsing_step: "School of Magic".to_owned(),
