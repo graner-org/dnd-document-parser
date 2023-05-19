@@ -13,10 +13,13 @@ mod tests;
 type Name = String;
 type SpellLevel = u8;
 type Ritual = bool;
+type MaybeDamageType = Option<Vec<DamageType>>;
+type Entries = Vec<String>;
+type AtHigherLevels = Option<String>;
 
 pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell, Error> {
     let spell = fs::read_to_string(source_file.clone())
-        .expect(format!("Failed to read {source_file}").as_str());
+        .unwrap_or_else(|_| panic!("Failed to read {source_file}"));
     let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(spell.as_str());
     let out_of_bounds_error = |index, parsing_step| OutOfBoundsError {
         array: spell_groups
@@ -31,11 +34,11 @@ pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell
     let (name, level, school, ritual) = spell_groups_iter
         .next()
         .ok_or(out_of_bounds_error(0, "First group parsing".to_owned()))
-        .map(|group| parse_first_group(group))??;
+        .map(parse_first_group)??;
     let (casting_time, range, components, duration, classes) = spell_groups_iter
         .next()
         .ok_or(out_of_bounds_error(1, "Second group parsing".to_owned()))
-        .map(|group| parse_second_group(group))??;
+        .map(parse_second_group)??;
     let (damage_types, description, at_higher_levels) = parse_entries(spell_groups_iter)?;
     Ok(Spell {
         source: source_book,
@@ -60,7 +63,7 @@ fn split_spell_into_groups(spell: &str) -> Vec<Vec<&str>> {
     // String that divides groups such as name + level + school, entries, etc.
     let divider = "___";
     spell
-        .split("\n")
+        .split('\n')
         .filter(|line| !excluder.is_match(line))
         .group_by(|line| *line == divider)
         .into_iter()
@@ -77,21 +80,20 @@ fn strip_str(s: &&str) -> String {
     let symbol_regex = Regex::new(r"(.*:|[^a-zA-Z\d])+").unwrap();
     let symbols_removed = symbol_regex.replace_all(s, " ").to_lowercase();
     let prefix_removed = symbols_removed
-        .strip_prefix(" ")
+        .strip_prefix(' ')
         .map(|s| s.to_owned())
         .unwrap_or(symbols_removed);
     prefix_removed
-        .strip_suffix(" ")
+        .strip_suffix(' ')
         .map(|s| s.to_owned())
         .unwrap_or(prefix_removed)
 }
 
-fn parse_casting_time(casting_time_str: &String) -> Result<CastingTime, Error> {
-    let mut words = casting_time_str.split(" ");
+fn parse_casting_time(casting_time_str: &str) -> Result<CastingTime, Error> {
+    let mut words = casting_time_str.split(' ');
     let out_of_bounds_error = |index, parsing_step: &str| OutOfBoundsError {
         array: casting_time_str
-            .clone()
-            .split(" ")
+            .split(' ')
             .map_into::<String>()
             .collect_vec(),
         index,
@@ -102,7 +104,7 @@ fn parse_casting_time(casting_time_str: &String) -> Result<CastingTime, Error> {
         .ok_or(out_of_bounds_error(0, "CastingTime: amount"))?
         .parse::<u8>()
         .map_err(|error| ParseError {
-            string: casting_time_str.clone(),
+            string: casting_time_str.to_owned(),
             parsing_step: "CastingTime: amount".to_owned(),
             problem: Some(error.to_string()),
         })?;
@@ -122,9 +124,9 @@ fn parse_casting_time(casting_time_str: &String) -> Result<CastingTime, Error> {
     Ok(CastingTime { number, unit })
 }
 
-fn parse_range(range_str: &String) -> Result<Range, Error> {
+fn parse_range(range_str: &str) -> Result<Range, Error> {
     use Range::*;
-    let mut words = range_str.split(" ");
+    let mut words = range_str.split(' ');
     // First word is range type
     match words.next() {
         Some("touch") => Ok(Touch),
@@ -141,7 +143,7 @@ fn parse_range(range_str: &String) -> Result<Range, Error> {
                 unit: words
                     .next()
                     .ok_or(OutOfBoundsError {
-                        array: range_str.split(" ").map_into().collect_vec(),
+                        array: range_str.split(' ').map_into().collect_vec(),
                         index: 2,
                         parsing_step: "Range (self): unit".to_owned(),
                     })?
@@ -149,7 +151,7 @@ fn parse_range(range_str: &String) -> Result<Range, Error> {
                 type_: words
                     .next()
                     .ok_or(OutOfBoundsError {
-                        array: range_str.split(" ").map_into().collect_vec(),
+                        array: range_str.split(' ').map_into().collect_vec(),
                         index: 3,
                         parsing_step: "Range (self): type".to_owned(),
                     })?
@@ -167,7 +169,7 @@ fn parse_range(range_str: &String) -> Result<Range, Error> {
             unit: words
                 .next()
                 .ok_or(OutOfBoundsError {
-                    array: range_str.split(" ").map_into().collect_vec(),
+                    array: range_str.split(' ').map_into().collect_vec(),
                     index: 2,
                     parsing_step: "Range (point): unit".to_owned(),
                 })?
@@ -175,7 +177,7 @@ fn parse_range(range_str: &String) -> Result<Range, Error> {
             type_: TargetType::Point,
         }),
         None => Err(OutOfBoundsError {
-            array: range_str.split(" ").map_into().collect_vec(),
+            array: range_str.split(' ').map_into().collect_vec(),
             index: 0,
             parsing_step: "Range".to_owned(),
         }
@@ -189,7 +191,7 @@ fn parse_components(components_str: String) -> Result<Components, Error> {
         stripped_str: String,
         original_str: &String,
     ) -> Result<Components, Error> {
-        let mut stripped_words = stripped_str.split(" ");
+        let mut stripped_words = stripped_str.split(' ');
         match stripped_words.next() {
             Some("v") => {
                 let other_components =
@@ -211,10 +213,10 @@ fn parse_components(components_str: String) -> Result<Components, Error> {
             }
             Some("m") => {
                 let words_vec = original_str
-                    .split(" ")
+                    .split(' ')
                     .skip_while(|word| word.to_lowercase() != "m")
                     .skip(1)
-                    .map(|word| word.replace("(", "").replace(")", ""))
+                    .map(|word| word.replace(['(', ')'], ""))
                     .collect_vec();
                 let component = words_vec.join(" ");
                 let consumed = words_vec
@@ -222,7 +224,7 @@ fn parse_components(components_str: String) -> Result<Components, Error> {
                     .any(|word| word.to_lowercase().starts_with("consume"));
                 let value = match words_vec.iter().contains(&"worth".to_owned()) {
                     true => {
-                        let mut words = stripped_str.split(" ");
+                        let mut words = stripped_str.split(' ');
                         let value = words
                             .find(|word| word.parse::<u32>().is_ok())
                             .ok_or(ParseError {
@@ -236,7 +238,7 @@ fn parse_components(components_str: String) -> Result<Components, Error> {
                             .next()
                             .ok_or({
                                 let array: Vec<String> =
-                                    stripped_str.split(" ").map_into().collect_vec();
+                                    stripped_str.split(' ').map_into().collect_vec();
                                 OutOfBoundsError {
                                     index: array
                                         .clone()
@@ -285,9 +287,9 @@ fn parse_components(components_str: String) -> Result<Components, Error> {
 }
 
 fn parse_duration(duration_str: String) -> Result<Duration, Error> {
-    let mut words = duration_str.split(" ");
+    let mut words = duration_str.split(' ');
     let out_of_bounds_error = |parsing_step: &str| {
-        let array: Vec<String> = duration_str.split(" ").map_into().collect_vec();
+        let array: Vec<String> = duration_str.split(' ').map_into().collect_vec();
         OutOfBoundsError {
             index: array
                 .clone()
@@ -348,7 +350,7 @@ fn parse_duration(duration_str: String) -> Result<Duration, Error> {
 
 fn parse_classes(classes_str: String) -> Result<Vec<Classes>, Error> {
     let found_classes = classes_str
-        .split(" ")
+        .split(' ')
         .flat_map(Classes::try_from)
         .collect_vec();
     if found_classes.is_empty() {
@@ -363,15 +365,13 @@ fn parse_classes(classes_str: String) -> Result<Vec<Classes>, Error> {
     }
 }
 
-fn parse_entries<'a, I>(
-    all_entries: I,
-) -> Result<(Option<Vec<DamageType>>, Vec<String>, Option<String>), Error>
+fn parse_entries<'a, I>(all_entries: I) -> Result<(MaybeDamageType, Entries, AtHigherLevels), Error>
 where
     I: Iterator<Item = &'a Vec<&'a str>>,
 {
     // Normal entries don't start with **, but "at higher level"-entries do
     let entries_by_type = all_entries
-        .filter_map(|group| group.get(0))
+        .filter_map(|group| group.first())
         .group_by(|entry| entry.starts_with("**"));
     let main_entries = entries_by_type
         .into_iter()
@@ -406,7 +406,7 @@ where
         .into_iter()
         .flat_map(|entry| {
             entry
-                .split(" ")
+                .split(' ')
                 .flat_map(DamageType::try_from)
                 .collect_vec()
         })
@@ -420,11 +420,10 @@ where
     let at_higher_levels = entries_by_type
         .into_iter()
         .next()
-        .map(|(_, group)| group.into_iter().cloned().next())
-        .flatten()
+        .and_then(|(_, group)| group.into_iter().cloned().next())
         .map(|entry| {
             entry
-                .split(" ")
+                .split(' ')
                 .filter(|group| !group.is_empty()) // Collapse multiple whitespaces
                 .dropping(3)
                 .join(" ")
@@ -432,8 +431,8 @@ where
     Ok((damage_types, main_entries, at_higher_levels))
 }
 
-fn parse_second_group<'a>(
-    group: &Vec<&str>,
+fn parse_second_group(
+    #[allow(clippy::ptr_arg)] group: &Vec<&str>,
 ) -> Result<(CastingTime, Range, Components, Duration, Vec<Classes>), Error> {
     let group_stripped = group.iter().map(strip_str).collect_vec();
     let out_of_bounds_error = |index, parsing_step: &str| OutOfBoundsError {
@@ -444,10 +443,12 @@ fn parse_second_group<'a>(
     let casting_time: CastingTime = group_stripped
         .get(0)
         .ok_or(out_of_bounds_error(0, "CastingTime"))
+        .map(String::as_str)
         .map(parse_casting_time)??;
     let range = group_stripped
         .get(1)
         .ok_or(out_of_bounds_error(1, "Range"))
+        .map(String::as_str)
         .map(parse_range)??;
     let components = group
         .get(2)
@@ -464,7 +465,9 @@ fn parse_second_group<'a>(
     Ok((casting_time, range, components, duration, classes))
 }
 
-fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool, Ritual), Error> {
+fn parse_first_group(
+    #[allow(clippy::ptr_arg)] group: &Vec<&str>,
+) -> Result<(Name, SpellLevel, MagicSchool, Ritual), Error> {
     fn clean_name(raw_name: &&str) -> String {
         raw_name.replace("#### ", "")
     }
@@ -473,30 +476,22 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
     }
     // The name is the first line of the group.
     let name = group
-        .get(0)
+        .first()
         .ok_or(OutOfBoundsError {
-            array: group
-                .into_iter()
-                .map(|s| s.to_owned().to_owned())
-                .collect_vec(),
+            array: group.iter().map(|s| s.to_owned().to_owned()).collect_vec(),
             index: 0,
             parsing_step: "Name".to_owned(),
         })
         .map(clean_name)?;
     // The second line contains spell level and school, as well as whether the spell is a ritual.
-    let level_and_school = strip_str(
-        &group.get(1).ok_or(OutOfBoundsError {
-            array: group
-                .into_iter()
-                .map(|s| s.to_owned().to_owned())
-                .collect_vec(),
-            index: 1,
-            parsing_step: "Level and School".to_owned(),
-        })?,
-    );
+    let level_and_school = strip_str(&group.get(1).ok_or(OutOfBoundsError {
+        array: group.iter().map(|s| s.to_owned().to_owned()).collect_vec(),
+        index: 1,
+        parsing_step: "Level and School".to_owned(),
+    })?);
 
     let school: MagicSchool = level_and_school
-        .split(" ")
+        .split(' ')
         .flat_map(MagicSchool::try_from)
         .next()
         .ok_or(ParseError {
@@ -508,7 +503,7 @@ fn parse_first_group(group: &Vec<&str>) -> Result<(Name, SpellLevel, MagicSchool
         .chars()
         .find_map(char_is_level)
         .unwrap_or(0);
-    let ritual: Ritual = level_and_school.split(" ").contains(&"ritual");
+    let ritual: Ritual = level_and_school.split(' ').contains(&"ritual");
     Ok((name, level, school, ritual))
 }
 

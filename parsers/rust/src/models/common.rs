@@ -32,7 +32,7 @@ impl To5etools for ActionType {
         json!(match self {
             Action => "action",
             BonusAction => "bonus",
-            Reaction => "reaction",
+            Reaction { condition: _ } => "reaction",
         })
     }
 }

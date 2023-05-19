@@ -120,7 +120,7 @@ pub struct MaterialComponent {
     pub consumed: bool,
 }
 
-impl<'a> To5etools for MaterialComponent {
+impl To5etools for MaterialComponent {
     fn to_5etools_base(&self) -> Value {
         if !self.consumed && self.value.is_none() {
             json!(self.component)
@@ -147,7 +147,7 @@ pub struct Components {
     pub material: Option<MaterialComponent>,
 }
 
-impl<'a> To5etools for Components {
+impl To5etools for Components {
     fn to_5etools_base(&self) -> Value {
         let verbal = match self.verbal {
             true => json!({"v": true}),
