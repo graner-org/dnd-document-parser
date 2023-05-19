@@ -192,7 +192,15 @@ fn parse_classes_test() {
         Ok(vec![Wizard, Warlock])
     );
     assert_eq!(parse_classes("artificer".to_owned()), Ok(vec![Artificer]));
-    assert_eq!(parse_classes("non_existing_class".to_owned()), Err(()));
+    assert_eq!(
+        parse_classes("non_existing_class".to_owned()),
+        Err(ParseError {
+            string: "non_existing_class".to_owned(),
+            parsing_step: "Classes".to_owned(),
+            problem: Some("No classes could be parsed.".to_owned())
+        }
+        .into())
+    );
 }
 
 #[test]

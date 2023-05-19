@@ -1,5 +1,5 @@
 use serde_json::Error as JSONError;
-use std::io::Error as IOError;
+use std::{io::Error as IOError, num::ParseIntError};
 
 #[derive(Debug, PartialEq)]
 pub struct ParseError {
@@ -8,11 +8,24 @@ pub struct ParseError {
     pub problem: Option<String>,
 }
 
+impl ParseError {
+    pub fn from_intparse_error(
+        string: String,
+        parsing_step: String,
+    ) -> impl FnOnce(ParseIntError) -> ParseError {
+        |error: ParseIntError| ParseError {
+            string,
+            parsing_step,
+            problem: Some(error.to_string()),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct OutOfBoundsError {
     pub array: Vec<String>,
+    pub index: u32,
     pub parsing_step: String,
-    pub problem: Option<String>,
 }
 
 #[derive(Debug)]
@@ -21,6 +34,17 @@ pub enum Error {
     JSON(JSONError),
     OutOfBounds(OutOfBoundsError),
     Parse(ParseError),
+}
+
+impl PartialEq for Error {
+    fn eq(&self, other: &Self) -> bool {
+        use Error::*;
+        match (self, other) {
+            (Parse(self_parse), Parse(other_parse)) => self_parse == other_parse,
+            (OutOfBounds(self_oob), OutOfBounds(other_oob)) => self_oob == other_oob,
+            _ => false,
+        }
+    }
 }
 
 impl From<IOError> for Error {
