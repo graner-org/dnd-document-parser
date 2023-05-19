@@ -14,24 +14,29 @@ type Name = String;
 type SpellLevel = u8;
 type Ritual = bool;
 
-pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell, ()> {
+pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell, Error> {
     let spell = fs::read_to_string(source_file.clone())
         .expect(format!("Failed to read {source_file}").as_str());
     let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(spell.as_str());
+    let out_of_bounds_error = |index, parsing_step| OutOfBoundsError {
+        array: spell_groups
+            .clone()
+            .into_iter()
+            .map(|vec| vec.join("\n"))
+            .collect_vec(),
+        index,
+        parsing_step,
+    };
     let mut spell_groups_iter = spell_groups.iter();
-    //TODO: Parse rituals here.
     let (name, level, school, ritual) = spell_groups_iter
         .next()
-        .map(|group| parse_first_group(group).ok())
-        .flatten()
-        .ok_or(())?;
+        .ok_or(out_of_bounds_error(0, "First group parsing".to_owned()))
+        .map(|group| parse_first_group(group))??;
     let (casting_time, range, components, duration, classes) = spell_groups_iter
         .next()
-        .map(|group| parse_second_group(group).ok())
-        .flatten()
-        .ok_or(())?;
-    let (damage_types, description, at_higher_levels) =
-        parse_entries(spell_groups_iter).map_err(|_| ())?;
+        .ok_or(out_of_bounds_error(1, "Second group parsing".to_owned()))
+        .map(|group| parse_second_group(group))??;
+    let (damage_types, description, at_higher_levels) = parse_entries(spell_groups_iter)?;
     Ok(Spell {
         source: source_book,
         name,
@@ -360,7 +365,7 @@ fn parse_classes(classes_str: String) -> Result<Vec<Classes>, Error> {
 
 fn parse_entries<'a, I>(
     all_entries: I,
-) -> Result<(Option<Vec<DamageType>>, Vec<String>, Option<String>), ()>
+) -> Result<(Option<Vec<DamageType>>, Vec<String>, Option<String>), Error>
 where
     I: Iterator<Item = &'a Vec<&'a str>>,
 {
@@ -380,9 +385,22 @@ where
             },
         )
         .find(|(key, _)| !*key) // Get the first group (which we just collapsed)
-        .unzip() // We are not interested in the key
-        .1
-        .ok_or(())?;
+        .ok_or_else(|| ParseError {
+            string: entries_by_type
+                .into_iter()
+                .map(|(_, entry)| {
+                    entry
+                        .cloned()
+                        .map(|entry| entry.to_owned())
+                        .collect_vec()
+                        .join("\n")
+                })
+                .collect_vec()
+                .join("\n"),
+            parsing_step: "Entries: main entries".to_owned(),
+            problem: Some("No entries found.".to_owned()),
+        })?
+        .1;
     let damage_types = main_entries
         .clone()
         .into_iter()
