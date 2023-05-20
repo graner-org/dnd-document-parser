@@ -1,9 +1,9 @@
 use serde_json::{json, Value};
 
-use crate::traits::To5etools;
+use crate::utils::traits::To5etools;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Source<'a> {
     pub source_book: &'a str,
     pub page: i16,

@@ -1,5 +1,12 @@
-use serde_json::Error as JSONError;
+use serde_json::{Error as JSONError, Value};
 use std::{io::Error as IOError, num::ParseIntError};
+
+#[derive(Debug, PartialEq)]
+pub struct JSONDiffError {
+    pub json1: Value,
+    pub json2: Value,
+    pub json_path: String,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct ParseError {

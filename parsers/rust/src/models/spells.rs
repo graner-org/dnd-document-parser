@@ -1,4 +1,4 @@
-use crate::traits::To5etools;
+use crate::utils::traits::To5etools;
 
 use super::common::*;
 use super::items::*;

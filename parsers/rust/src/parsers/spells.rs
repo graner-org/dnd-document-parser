@@ -1,11 +1,10 @@
-use crate::error::{Error, OutOfBoundsError, ParseError};
 use crate::models::common::*;
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::*;
+use crate::utils::error::{Error, OutOfBoundsError, ParseError};
 use itertools::Itertools;
 use regex::Regex;
 use std::convert::TryFrom;
-use std::fs;
 
 #[cfg(test)]
 mod tests;
@@ -18,9 +17,7 @@ type Entries = Vec<String>;
 type AtHigherLevels = Option<String>;
 
 pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell, Error> {
-    let spell = fs::read_to_string(source_file.clone())
-        .unwrap_or_else(|_| panic!("Failed to read {source_file}"));
-    let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(spell.as_str());
+    let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(source_file.as_str());
     let out_of_bounds_error = |index, parsing_step| OutOfBoundsError {
         array: spell_groups
             .clone()
