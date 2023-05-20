@@ -39,21 +39,21 @@ fn casting_time_unit_parse_test() {
 #[test]
 fn casting_time_parse_test() {
     assert_eq!(
-        parse_casting_time(&"1 action".to_owned()),
+        parse_casting_time("1 action"),
         Ok(CastingTime {
             number: 1,
             unit: CastingTimeUnit::Action(ActionType::Action)
         }),
     );
     assert_eq!(
-        parse_casting_time(&"10 minutes".to_owned()),
+        parse_casting_time("10 minutes"),
         Ok(CastingTime {
             number: 10,
             unit: CastingTimeUnit::Time(TimeUnit::Minute),
         }),
     );
     assert_eq!(
-        parse_casting_time(&"1 reaction when condition is met".to_owned()),
+        parse_casting_time("1 reaction when condition is met"),
         Ok(CastingTime {
             number: 1,
             unit: CastingTimeUnit::Action(ActionType::Reaction {
@@ -66,7 +66,7 @@ fn casting_time_parse_test() {
 #[test]
 fn range_parse_test() {
     assert_eq!(
-        parse_range(&"60 feet".to_owned()),
+        parse_range("60 feet"),
         Ok(Range::Ranged {
             type_: TargetType::Point,
             range: 60,
@@ -74,17 +74,17 @@ fn range_parse_test() {
         })
     );
     assert_eq!(
-        parse_range(&"self 60 mile radius".to_owned()),
+        parse_range("self 60 mile radius"),
         Ok(Range::Ranged {
             type_: TargetType::Radius,
             range: 60,
             unit: RangeUnit::Miles
         })
     );
-    assert_eq!(parse_range(&"self".to_owned()), Ok(Range::Self_));
-    assert_eq!(parse_range(&"touch".to_owned()), Ok(Range::Touch));
+    assert_eq!(parse_range("self"), Ok(Range::Self_));
+    assert_eq!(parse_range("touch"), Ok(Range::Touch));
     assert_eq!(
-        parse_range(&"self 10 foot cone".to_owned()),
+        parse_range("self 10 foot cone"),
         Ok(Range::Ranged {
             type_: TargetType::Cone,
             range: 10,
