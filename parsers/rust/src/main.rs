@@ -2,7 +2,7 @@ use std::fs;
 
 use dnd_document_parser::models::common::Source;
 use dnd_document_parser::parsers::spells::*;
-use dnd_document_parser::traits::To5etools;
+use dnd_document_parser::utils::traits::To5etools;
 
 fn main() {
     let source_file = format!(

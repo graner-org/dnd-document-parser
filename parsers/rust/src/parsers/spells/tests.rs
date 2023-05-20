@@ -1,5 +1,4 @@
 use super::{parse_casting_time, parse_entries};
-use crate::error::ParseError;
 use crate::models::common::{ActionType, Classes, DamageType, RangeUnit, TimeUnit};
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::{
@@ -7,6 +6,7 @@ use crate::models::spells::{
     TimedDuration,
 };
 use crate::parsers::spells::{parse_classes, parse_components, parse_duration, parse_range};
+use crate::utils::error::ParseError;
 
 #[test]
 fn casting_time_unit_parse_test() {

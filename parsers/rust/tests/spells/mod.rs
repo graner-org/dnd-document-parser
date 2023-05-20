@@ -1,6 +1,7 @@
 use dnd_document_parser::models::common::Source;
-use dnd_document_parser::{parsers::spells::parse_gm_binder, traits::To5etools};
 use serde_json::Value;
+use dnd_document_parser::parsers::spells::parse_gm_binder;
+use dnd_document_parser::utils::{compare::json_compare, traits::To5etools};
 use std::fs::{read_to_string, File};
 use std::io::BufReader;
 
@@ -11,7 +12,7 @@ fn read_json_file(filename: String) -> Value {
 }
 
 #[test]
-fn gmbinder_integration_test() {
+fn gmbinder_parse_single_spell() {
     let resource_dir = format!("{}/resources/test/spells", env!("CARGO_MANIFEST_DIR"));
     let gmbinder_source = format!("{}/gm_binder_input.html", resource_dir,);
     let expected_source = format!("{}/gm_binder_output.json", resource_dir,);
@@ -25,6 +26,15 @@ fn gmbinder_integration_test() {
         .map(|spell| spell.to_5etools_spell())
         .unwrap();
     let expected_json = read_json_file(expected_source);
-    let expected_json = expected_json.get("spell").and_then(|val| val.get(0));
-    assert_eq!(Some(&parsed_spell), expected_json)
+    let expected_json = expected_json
+        .get("spell")
+        .and_then(|val| val.get(0))
+        .unwrap()
+        .to_owned();
+    let comparison = json_compare(parsed_spell, expected_json);
+    assert!(
+        comparison.is_ok(),
+        "Parsed does not match expected:\n{comparison:#?}"
+    )
+}
 }

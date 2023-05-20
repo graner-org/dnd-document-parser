@@ -1,7 +1,7 @@
-use crate::error::{Error, OutOfBoundsError, ParseError};
 use crate::models::common::*;
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::*;
+use crate::utils::error::{Error, OutOfBoundsError, ParseError};
 use itertools::Itertools;
 use regex::Regex;
 use std::convert::TryFrom;
