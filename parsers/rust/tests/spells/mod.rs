@@ -1,7 +1,7 @@
 use dnd_document_parser::models::common::Source;
 use dnd_document_parser::{parsers::spells::parse_gm_binder, traits::To5etools};
 use serde_json::Value;
-use std::fs::File;
+use std::fs::{read_to_string, File};
 use std::io::BufReader;
 
 fn read_json_file(filename: String) -> Value {
@@ -19,7 +19,9 @@ fn gmbinder_integration_test() {
         source_book: "test-source",
         page: 0,
     };
-    let parsed_spell = parse_gm_binder(gmbinder_source, source_book)
+    let spell = read_to_string(gmbinder_source.clone())
+        .unwrap_or_else(|_| panic!("Failed to read {gmbinder_source}"));
+    let parsed_spell = parse_gm_binder(spell, source_book)
         .map(|spell| spell.to_5etools_spell())
         .unwrap();
     let expected_json = read_json_file(expected_source);
