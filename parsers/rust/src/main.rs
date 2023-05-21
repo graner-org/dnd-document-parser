@@ -19,6 +19,9 @@ use itertools::Itertools;
 struct Cli {
     /// Path to file or directory that will be parsed
     input_path: PathBuf,
+    /// Path to file that will be written
+    #[arg(short, long = "output", default_value = "output.json")]
+    output_path: PathBuf,
 }
 
 // TODO: Better error messages
@@ -42,25 +45,31 @@ fn main() -> Result<(), Error> {
         source_book: "book",
         page: 0,
     };
-    for source_path in sources {
-        let source = fs::read_to_string(source_path.clone())?;
-        let parsed_spells = source
-            .split("\n\n")
-            .flat_map(|spell_str| {
-                match parse_gm_binder(spell_str.to_owned(), source_book.clone()) {
-                    Ok(spell) => Some(Ok(spell)),
-                    Err(Error::Parse(parse_error)) => match parse_error.parsing_step.as_str() {
-                        "Name" | "School of Magic" => None,
-                        _ => Some(Err(parse_error)),
-                    },
-                    _ => None,
-                }
-            })
-            .collect_vec();
-        println!("{source_path:?} ({} found):", parsed_spells.len());
-        for spell_res in parsed_spells {
-            println!("\t{:?}", spell_res.map(|spell| spell.name));
-        }
+    let parsed_spells = sources
+        .into_iter()
+        .map(fs::read_to_string)
+        .map_ok(|source| {
+            source
+                // TODO: split by something smarter to allow empty lines within spells.
+                .split("\n\n")
+                .map(|spell_str| parse_gm_binder(spell_str.to_owned(), source_book.clone()))
+                .collect_vec()
+        })
+        .flatten()
+        .flatten()
+        .filter(|spell_res| match spell_res {
+            // Filter out errors that correspond to non-spells
+            Err(Error::OutOfBounds(oob_error)) => !vec!["First group parsing", "Level and School"]
+                .contains(&oob_error.parsing_step.as_str()),
+            Err(Error::Parse(parse_error)) => {
+                !(parse_error.parsing_step.starts_with("Name")
+                    || parse_error.parsing_step.starts_with("School of Magic"))
+            }
+            _ => true,
+        })
+        .collect_vec();
+    for spell_res in parsed_spells {
+        println!("\t{:?}", spell_res.map(|spell| spell.name));
     }
     Ok(())
 }

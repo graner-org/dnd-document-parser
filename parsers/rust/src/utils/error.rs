@@ -8,7 +8,7 @@ pub struct JSONDiffError {
     pub json_path: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ParseError {
     pub string: String,
     pub parsing_step: String,

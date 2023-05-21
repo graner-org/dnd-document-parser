@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 mod tests;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MagicSchool {
     Abjuration,
     Conjuration,
@@ -55,7 +55,7 @@ impl To5etools for CastingTimeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TargetType {
     Point,
     Radius,
@@ -74,7 +74,7 @@ impl To5etools for TargetType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Range {
     Self_,
     Touch,
@@ -141,7 +141,7 @@ impl To5etools for MaterialComponent {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Components {
     pub verbal: bool,
     pub somatic: bool,
@@ -166,7 +166,7 @@ impl To5etools for Components {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Duration {
     Instantaneous,
     Timed(TimedDuration),
@@ -183,7 +183,7 @@ impl To5etools for Duration {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TimedDuration {
     pub number: u8,
     pub unit: TimeUnit,
@@ -207,7 +207,7 @@ impl To5etools for TimedDuration {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CastingTime {
     pub number: u8,
     pub unit: CastingTimeUnit,
@@ -229,7 +229,7 @@ impl To5etools for CastingTime {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Spell<'a> {
     pub source: Source<'a>,
     pub name: String,

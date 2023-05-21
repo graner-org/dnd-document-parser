@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 use crate::utils::traits::To5etools;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Source<'a> {
     pub source_book: &'a str,
     pub page: i16,
@@ -70,7 +70,7 @@ impl To5etools for TimeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum RangeUnit {
     Feet,
     Miles,
