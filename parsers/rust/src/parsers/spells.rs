@@ -6,6 +6,7 @@ use itertools::Itertools;
 use regex::Regex;
 use std::convert::TryFrom;
 
+
 #[cfg(test)]
 mod tests;
 
@@ -374,7 +375,7 @@ where
 {
     // Normal entries don't start with **, but "at higher level"-entries do
     let entries_by_type = all_entries
-        .filter_map(|group| group.first())
+        .flatten()
         .group_by(|entry| entry.starts_with("**"));
     let main_entries = entries_by_type
         .into_iter()

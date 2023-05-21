@@ -5,6 +5,7 @@ use clap::Parser;
 use dnd_document_parser::models::common::Source;
 use dnd_document_parser::parsers::spells::parse_gm_binder;
 use dnd_document_parser::utils::error::Error;
+
 use itertools::Itertools;
 
 #[derive(Parser)]
@@ -23,7 +24,7 @@ struct Cli {
 // TODO: Better error messages
 fn find_html_files(path: PathBuf) -> Result<Vec<PathBuf>, Error> {
     if path.is_file() {
-        return match path.extension().map(|ext| ext.to_str()).flatten() {
+        return match path.extension().and_then(|ext| ext.to_str()) {
             Some("html") => Ok(vec![path]),
             _ => Ok(vec![]),
         };
@@ -47,20 +48,19 @@ fn main() -> Result<(), Error> {
             .split("\n\n")
             .flat_map(|spell_str| {
                 match parse_gm_binder(spell_str.to_owned(), source_book.clone()) {
-                    Ok(spell) => Some(spell.name),
+                    Ok(spell) => Some(Ok(spell)),
                     Err(Error::Parse(parse_error)) => match parse_error.parsing_step.as_str() {
                         "Name" | "School of Magic" => None,
-                        _ => Some(format!("{parse_error:?}")),
+                        _ => Some(Err(parse_error)),
                     },
                     _ => None,
                 }
             })
             .collect_vec();
-        println!("{source_path:?}:");
-        for spell in parsed_spells.clone() {
-            println!("\t{spell:?}");
+        println!("{source_path:?} ({} found):", parsed_spells.len());
+        for spell_res in parsed_spells {
+            println!("\t{:?}", spell_res.map(|spell| spell.name));
         }
-        println!("Spells found: {}", parsed_spells.len());
     }
     Ok(())
 }
