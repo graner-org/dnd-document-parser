@@ -175,6 +175,14 @@ fn parse_duration_test() {
         }))
     );
     assert_eq!(
+        parse_duration("Up to 5 minutes".to_owned()),
+        Ok(Duration::Timed(TimedDuration {
+            number: 5,
+            unit: TimeUnit::Minute,
+            concentration: false
+        }))
+    );
+    assert_eq!(
         parse_duration("concentration up to 10 minutes".to_owned()),
         Ok(Duration::Timed(TimedDuration {
             number: 10,

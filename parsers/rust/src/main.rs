@@ -45,12 +45,20 @@ fn main() -> Result<(), Error> {
         let source = fs::read_to_string(source_path.clone())?;
         let parsed_spells = source
             .split("\n\n")
-            .flat_map(|spell_str| parse_gm_binder(spell_str.to_owned(), source_book.clone()))
-            .map(|spell| spell.name)
+            .flat_map(|spell_str| {
+                match parse_gm_binder(spell_str.to_owned(), source_book.clone()) {
+                    Ok(spell) => Some(spell.name),
+                    Err(Error::Parse(parse_error)) => match parse_error.parsing_step.as_str() {
+                        "Name" | "School of Magic" => None,
+                        _ => Some(format!("{parse_error:?}")),
+                    },
+                    _ => None,
+                }
+            })
             .collect_vec();
         println!("{source_path:?}:");
         for spell in parsed_spells.clone() {
-            println!("\t{spell}");
+            println!("\t{spell:?}");
         }
         println!("Spells found: {}", parsed_spells.len());
     }

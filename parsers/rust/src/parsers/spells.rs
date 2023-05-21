@@ -322,10 +322,16 @@ fn parse_duration(duration_str: String) -> Result<Duration, Error> {
             }))
         }
         Some(word) => {
-            let number = word.parse::<u8>().map_err(ParseError::from_intparse_error(
-                word.to_owned(),
-                "Duration (Timed): amount".to_owned(),
-            ))?;
+            let number = match word.parse::<u8>() {
+                Ok(number) => Ok(number),
+                Err(_) => words
+                    .find_map(|word| word.parse::<u8>().ok())
+                    .ok_or(ParseError {
+                        string: duration_str.clone(),
+                        parsing_step: "Duration (Timed): amount".to_owned(),
+                        problem: Some("No number can be parsed as u8.".to_owned()),
+                    }),
+            }?;
             let unit = words
                 .next()
                 .ok_or(out_of_bounds_error("Duration (Timed): unit"))?
