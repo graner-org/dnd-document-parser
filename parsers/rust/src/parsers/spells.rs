@@ -6,7 +6,6 @@ use itertools::Itertools;
 use regex::Regex;
 use std::convert::TryFrom;
 
-
 #[cfg(test)]
 mod tests;
 
@@ -414,6 +413,7 @@ where
                 .flat_map(DamageType::try_from)
                 .collect_vec()
         })
+        .unique()
         .collect_vec();
     let damage_types = if damage_types.is_empty() {
         None
