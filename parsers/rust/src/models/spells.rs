@@ -2,13 +2,14 @@ use crate::utils::traits::To5etools;
 
 use super::common::*;
 use super::items::*;
+use itertools::Itertools;
 use serde_json::{json, Value};
 
 #[cfg(test)]
 mod tests;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MagicSchool {
     Abjuration,
     Conjuration,
@@ -54,7 +55,7 @@ impl To5etools for CastingTimeUnit {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TargetType {
     Point,
     Radius,
@@ -73,7 +74,7 @@ impl To5etools for TargetType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Range {
     Self_,
     Touch,
@@ -140,7 +141,7 @@ impl To5etools for MaterialComponent {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Components {
     pub verbal: bool,
     pub somatic: bool,
@@ -165,7 +166,7 @@ impl To5etools for Components {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Duration {
     Instantaneous,
     Timed(TimedDuration),
@@ -182,7 +183,7 @@ impl To5etools for Duration {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TimedDuration {
     pub number: u8,
     pub unit: TimeUnit,
@@ -206,7 +207,7 @@ impl To5etools for TimedDuration {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CastingTime {
     pub number: u8,
     pub unit: CastingTimeUnit,
@@ -228,7 +229,7 @@ impl To5etools for CastingTime {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Spell<'a> {
     pub source: Source<'a>,
     pub name: String,
@@ -245,6 +246,22 @@ pub struct Spell<'a> {
     pub classes: Vec<Classes>,
 }
 
+fn description_serialization(description: &[String]) -> Value {
+    let description_with_lists = description
+        .iter()
+        .group_by(|entry| entry.starts_with("- ")) // Get groups of lists
+        .into_iter()
+        .flat_map(|(key, group)| match key {
+            true => vec![json!({
+                "type": "list",
+                "items": group.into_iter().map(|entry| entry.strip_prefix("- ").unwrap()).collect_vec(),
+            })],
+            false => group.into_iter().map(|entry| json!(entry)).collect_vec(),
+        })
+        .collect_vec();
+    json!(description_with_lists)
+}
+
 impl<'a> To5etools for Spell<'a> {
     fn to_5etools_base(&self) -> Value {
         let source = self.source.to_5etools_base();
@@ -256,7 +273,7 @@ impl<'a> To5etools for Spell<'a> {
             "range": self.range.to_5etools_spell(),
             "components": self.components.to_5etools_spell(),
             "duration": self.duration.to_5etools_spell(),
-            "entries": self.description,
+            "entries": description_serialization(&self.description),
             "classes": json!({
                 "fromClassList": self.classes.to_5etools_spell()
             }),
