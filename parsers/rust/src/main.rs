@@ -39,7 +39,7 @@ struct Cli {
 // TODO: Better error messages
 fn find_html_files(path: PathBuf) -> Result<Vec<PathBuf>, Error> {
     if path.is_file() {
-        return match path.extension().and_then(|ext| ext.to_str()) {
+        return match path.extension().and_then(std::ffi::OsStr::to_str) {
             Some("html") => Ok(vec![path]),
             _ => Ok(vec![]),
         };
@@ -57,6 +57,7 @@ fn read_meta_file(meta_path: PathBuf) -> Result<Value, Error> {
     serde_json::from_str::<Value>(metadata_str.as_str()).map_err(Into::into)
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn parse_gm_binder_spells(sources: Vec<PathBuf>, source_book: Source) -> Vec<Result<Spell, Error>> {
     sources
         .into_iter()

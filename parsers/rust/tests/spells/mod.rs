@@ -15,8 +15,8 @@ fn read_json_file(filename: String) -> Value {
 #[test]
 fn gmbinder_parse_single_spell() {
     let resource_dir = format!("{}/resources/test/spells", env!("CARGO_MANIFEST_DIR"));
-    let gmbinder_source = format!("{}/gm_binder_input.html", resource_dir,);
-    let expected_source = format!("{}/gm_binder_output.json", resource_dir,);
+    let gmbinder_source = format!("{resource_dir}/gm_binder_input.html",);
+    let expected_source = format!("{resource_dir}/gm_binder_output.json",);
     let source_book = Source {
         source_book: "test-source",
         page: 0,
@@ -30,20 +30,19 @@ fn gmbinder_parse_single_spell() {
     let expected_json = expected_json
         .get("spell")
         .and_then(|val| val.get(0))
-        .unwrap()
-        .to_owned();
+        .unwrap().clone();
     let comparison = json_compare(parsed_spell, expected_json);
     assert!(
         comparison.is_ok(),
         "Parsed does not match expected:\n{comparison:#?}"
-    )
+    );
 }
 
 #[test]
 fn gmbinder_parse_multiple_spells() {
     let resource_dir = format!("{}/resources/test/spells", env!("CARGO_MANIFEST_DIR"));
-    let gmbinder_source = format!("{}/gm_binder_input_multiple.html", resource_dir,);
-    let expected_source = format!("{}/gm_binder_output_multiple.json", resource_dir,);
+    let gmbinder_source = format!("{resource_dir}/gm_binder_input_multiple.html",);
+    let expected_source = format!("{resource_dir}/gm_binder_output_multiple.json",);
     let source_book = Source {
         source_book: "test-source",
         page: 0,
@@ -56,10 +55,10 @@ fn gmbinder_parse_multiple_spells() {
         .map(|spell| spell.to_5etools_spell())
         .collect_vec());
     let expected_json = read_json_file(expected_source);
-    let expected_json = expected_json.get("spell").unwrap().to_owned();
+    let expected_json = expected_json.get("spell").unwrap().clone();
     let comparison = json_compare(parsed_spells, expected_json);
     assert!(
         comparison.is_ok(),
         "Parsed does not match expected:\n{comparison:#?}"
-    )
+    );
 }

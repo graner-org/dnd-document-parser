@@ -10,7 +10,7 @@ use crate::utils::error::ParseError;
 
 #[test]
 fn casting_time_unit_parse_test() {
-    use CastingTimeUnit::*;
+    use CastingTimeUnit::{Action, Time};
     use TimeUnit::Hour;
     type Res = Result<CastingTimeUnit, ParseError>;
     let action: Res = "action".try_into();
@@ -22,7 +22,7 @@ fn casting_time_unit_parse_test() {
     assert_eq!(
         reaction,
         Ok(Action(ActionType::Reaction {
-            condition: "".to_owned()
+            condition: String::new()
         }))
     );
     assert_eq!(hour, Ok(Time(Hour)));
@@ -194,7 +194,7 @@ fn parse_duration_test() {
 
 #[test]
 fn parse_classes_test() {
-    use Classes::*;
+    use Classes::{Artificer, Warlock, Wizard};
     assert_eq!(
         parse_classes("wizard warlock".to_owned()),
         Ok(vec![Wizard, Warlock])
@@ -213,7 +213,7 @@ fn parse_classes_test() {
 
 #[test]
 fn parse_entries_test() {
-    use DamageType::*;
+    use DamageType::{Acid, Necrotic};
     assert_eq!(
         parse_entries(
             vec![

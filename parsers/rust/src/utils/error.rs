@@ -1,14 +1,15 @@
+#![allow(clippy::module_name_repetitions)]
 use serde_json::{Error as JSONError, Value};
 use std::{io::Error as IOError, num::ParseIntError};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct JSONDiffError {
     pub json1: Value,
     pub json2: Value,
     pub json_path: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParseError {
     pub string: String,
     pub parsing_step: String,
@@ -19,8 +20,8 @@ impl ParseError {
     pub fn from_intparse_error(
         string: String,
         parsing_step: String,
-    ) -> impl FnOnce(ParseIntError) -> ParseError {
-        |error: ParseIntError| ParseError {
+    ) -> impl FnOnce(ParseIntError) -> Self {
+        |error: ParseIntError| Self {
             string,
             parsing_step,
             problem: Some(error.to_string()),
@@ -28,7 +29,7 @@ impl ParseError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct OutOfBoundsError {
     pub array: Vec<String>,
     pub index: u32,
@@ -45,7 +46,7 @@ pub enum Error {
 
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
-        use Error::*;
+        use Error::{OutOfBounds, Parse};
         match (self, other) {
             (Parse(self_parse), Parse(other_parse)) => self_parse == other_parse,
             (OutOfBounds(self_oob), OutOfBounds(other_oob)) => self_oob == other_oob,
@@ -56,24 +57,24 @@ impl PartialEq for Error {
 
 impl From<IOError> for Error {
     fn from(value: IOError) -> Self {
-        Error::IO(value)
+        Self::IO(value)
     }
 }
 
 impl From<JSONError> for Error {
     fn from(value: JSONError) -> Self {
-        Error::JSON(value)
+        Self::JSON(value)
     }
 }
 
 impl From<ParseError> for Error {
     fn from(value: ParseError) -> Self {
-        Error::Parse(value)
+        Self::Parse(value)
     }
 }
 
 impl From<OutOfBoundsError> for Error {
     fn from(value: OutOfBoundsError) -> Self {
-        Error::OutOfBounds(value)
+        Self::OutOfBounds(value)
     }
 }
