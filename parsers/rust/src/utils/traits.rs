@@ -10,13 +10,13 @@ pub trait To5etools {
 impl<T: To5etools + Copy> To5etools for Vec<T> {
     fn to_5etools_base(&self) -> Value {
         self.iter()
-            .map(|value| value.to_5etools_base())
+            .map(To5etools::to_5etools_base)
             .collect::<Value>()
     }
 
     fn to_5etools_spell(&self) -> Value {
         self.iter()
-            .map(|value| value.to_5etools_spell())
+            .map(To5etools::to_5etools_spell)
             .collect::<Value>()
     }
 }

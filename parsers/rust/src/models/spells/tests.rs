@@ -1,4 +1,5 @@
 use super::*;
+use crate::models::items::Currency;
 
 #[test]
 fn casting_time_test() {
@@ -238,5 +239,5 @@ fn spell_test() {
         }
     });
 
-    assert_eq!(revivify.to_5etools_spell(), revivify_5etools_json)
+    assert_eq!(revivify.to_5etools_spell(), revivify_5etools_json);
 }

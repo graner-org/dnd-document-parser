@@ -1,9 +1,13 @@
-use crate::models::common::*;
+use crate::models::common::{ActionType, Classes, DamageType, RangeUnit, Source, TimeUnit};
 use crate::models::items::{Currency, ItemValue};
-use crate::models::spells::*;
+use crate::models::spells::{
+    CastingTime, CastingTimeUnit, Components, Duration, MagicSchool, MaterialComponent, Range,
+    Spell, TargetType, TimedDuration,
+};
 use crate::utils::error::{Error, OutOfBoundsError, ParseError};
 use itertools::Itertools;
 use regex::Regex;
+use std::borrow::ToOwned;
 use std::convert::TryFrom;
 
 #[cfg(test)]
@@ -30,11 +34,11 @@ pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell
     let mut spell_groups_iter = spell_groups.iter();
     let (name, level, school, ritual) = spell_groups_iter
         .next()
-        .ok_or(out_of_bounds_error(0, "First group parsing".to_owned()))
+        .ok_or_else(|| out_of_bounds_error(0, "First group parsing".to_owned()))
         .map(parse_first_group)??;
     let (casting_time, range, components, duration, classes) = spell_groups_iter
         .next()
-        .ok_or(out_of_bounds_error(1, "Second group parsing".to_owned()))
+        .ok_or_else(|| out_of_bounds_error(1, "Second group parsing".to_owned()))
         .map(parse_second_group)??;
     let (damage_types, description, at_higher_levels) = parse_entries(spell_groups_iter)?;
     Ok(Spell {
@@ -65,10 +69,7 @@ fn split_spell_into_groups(spell: &str) -> Vec<Vec<&str>> {
         .group_by(|line| *line == divider)
         .into_iter()
         // Collect groups into vectors, remove divider lines.
-        .filter_map(|(key, group)| match key {
-            false => Some(group.collect()),
-            _ => None,
-        })
+        .filter_map(|(key, group)| if key { None } else { Some(group.collect()) })
         .collect()
 }
 
@@ -76,14 +77,9 @@ fn strip_str(s: &&str) -> String {
     // Match everything before `:`, and any symbols after
     let symbol_regex = Regex::new(r"(.*:|[^a-zA-Z\d])+").unwrap();
     let symbols_removed = symbol_regex.replace_all(s, " ").to_lowercase();
-    let prefix_removed = symbols_removed
+    symbols_removed
         .strip_prefix(' ')
-        .map(|s| s.to_owned())
-        .unwrap_or(symbols_removed);
-    prefix_removed
-        .strip_suffix(' ')
-        .map(|s| s.to_owned())
-        .unwrap_or(prefix_removed)
+        .map_or(symbols_removed.clone(), ToOwned::to_owned)
 }
 
 fn parse_casting_time(casting_time_str: &str) -> Result<CastingTime, Error> {
@@ -98,7 +94,7 @@ fn parse_casting_time(casting_time_str: &str) -> Result<CastingTime, Error> {
     };
     let number: u8 = words
         .next()
-        .ok_or(out_of_bounds_error(0, "CastingTime: amount"))?
+        .ok_or_else(|| out_of_bounds_error(0, "CastingTime: amount"))?
         .parse::<u8>()
         .map_err(|error| ParseError {
             string: casting_time_str.to_owned(),
@@ -107,7 +103,7 @@ fn parse_casting_time(casting_time_str: &str) -> Result<CastingTime, Error> {
         })?;
     let unit = words
         .next()
-        .ok_or(out_of_bounds_error(1, "CastingTime: unit"))?
+        .ok_or_else(|| out_of_bounds_error(1, "CastingTime: unit"))?
         .try_into()?;
     // If the unit is a reaction, there is an associated condition.
     let unit = match unit {
@@ -122,7 +118,7 @@ fn parse_casting_time(casting_time_str: &str) -> Result<CastingTime, Error> {
 }
 
 fn parse_range(range_str: &str) -> Result<Range, Error> {
-    use Range::*;
+    use Range::{Ranged, Self_, Special, Touch};
     let mut words = range_str.split(' ');
     // First word is range type
     match words.next() {
@@ -184,102 +180,101 @@ fn parse_range(range_str: &str) -> Result<Range, Error> {
 
 fn parse_components(components_str: String) -> Result<Components, Error> {
     let stripped_components_str = strip_str(&components_str.as_str());
-    fn parse_components_helper(
-        stripped_str: String,
-        original_str: &String,
-    ) -> Result<Components, Error> {
-        let mut stripped_words = stripped_str.split(' ');
-        match stripped_words.next() {
-            Some("v") => {
-                let other_components =
-                    parse_components_helper(stripped_words.join(" "), original_str)?;
-                Ok(Components {
-                    verbal: true,
-                    somatic: other_components.somatic,
-                    material: other_components.material,
-                })
-            }
-            Some("s") => {
-                let other_components =
-                    parse_components_helper(stripped_words.join(" "), original_str)?;
-                Ok(Components {
-                    verbal: false,
-                    somatic: true,
-                    material: other_components.material,
-                })
-            }
-            Some("m") => {
-                let words_vec = original_str
-                    .split(' ')
-                    .skip_while(|word| word.to_lowercase() != "m")
-                    .skip(1)
-                    .map(|word| word.replace(['(', ')'], ""))
-                    .collect_vec();
-                let component = words_vec.join(" ");
-                let consumed = words_vec
-                    .iter()
-                    .any(|word| word.to_lowercase().starts_with("consume"));
-                let value = match words_vec.iter().contains(&"worth".to_owned()) {
-                    true => {
-                        let mut words = stripped_str.split(' ');
-                        let value = words
-                            .find(|word| word.parse::<u32>().is_ok())
-                            .ok_or(ParseError {
-                                string: stripped_str.clone(),
-                                parsing_step: "Components (material): value".to_owned(),
-                                problem: Some("No word found that parses as u32.".to_owned()),
-                            })?
-                            .parse::<u32>()
-                            .unwrap();
-                        let unit = words
-                            .next()
-                            .ok_or({
-                                let array: Vec<String> =
-                                    stripped_str.split(' ').map_into().collect_vec();
-                                OutOfBoundsError {
-                                    index: array
-                                        .clone()
-                                        .into_iter()
-                                        .find_position(|word| word.parse::<u32>().is_ok())
-                                        .map(|(i, _)| i as u32 + 1)
-                                        .expect("A parsable u32 was found above."),
-                                    array,
-                                    parsing_step: "Components (material): currency".to_owned(),
-                                }
-                            })?
-                            .try_into()?;
-                        Some(ItemValue { value, unit })
-                    }
-                    false => None,
-                };
-                // Parse cost and consumption
-                Ok(Components {
-                    verbal: false,
-                    somatic: false,
-                    material: Some(MaterialComponent {
-                        component,
-                        value,
-                        consumed,
-                    }),
-                })
-            }
-            _ => Ok(Components {
-                verbal: false,
-                somatic: false,
-                material: None,
-            }),
-        }
-    }
-    let components = parse_components_helper(stripped_components_str, &components_str)?;
-    if !(components.verbal || components.somatic || components.material.is_some()) {
+    let components = _parse_components_helper(stripped_components_str, &components_str)?;
+    if components.verbal || components.somatic || components.material.is_some() {
+        Ok(components)
+    } else {
         Err(ParseError {
             string: components_str,
             parsing_step: "Components".to_owned(),
             problem: Some("No components could be parsed.".to_owned()),
         }
         .into())
-    } else {
-        Ok(components)
+    }
+}
+
+fn _parse_components_helper(
+    stripped_str: String,
+    original_str: &String,
+) -> Result<Components, Error> {
+    let mut stripped_words = stripped_str.split(' ');
+    match stripped_words.next() {
+        Some("v") => {
+            let other_components =
+                _parse_components_helper(stripped_words.join(" "), original_str)?;
+            Ok(Components {
+                verbal: true,
+                somatic: other_components.somatic,
+                material: other_components.material,
+            })
+        }
+        Some("s") => {
+            let other_components =
+                _parse_components_helper(stripped_words.join(" "), original_str)?;
+            Ok(Components {
+                verbal: false,
+                somatic: true,
+                material: other_components.material,
+            })
+        }
+        Some("m") => {
+            let words_vec = original_str
+                .split(' ')
+                .skip_while(|word| word.to_lowercase() != "m")
+                .skip(1)
+                .map(|word| word.replace(['(', ')'], ""))
+                .collect_vec();
+            let component = words_vec.join(" ");
+            let consumed = words_vec
+                .iter()
+                .any(|word| word.to_lowercase().starts_with("consume"));
+            let value = if words_vec.iter().contains(&"worth".to_owned()) {
+                let mut words = stripped_str.split(' ');
+                let value = words
+                    .find(|word| word.parse::<u32>().is_ok())
+                    .ok_or(ParseError {
+                        string: stripped_str.clone(),
+                        parsing_step: "Components (material): value".to_owned(),
+                        problem: Some("No word found that parses as u32.".to_owned()),
+                    })?
+                    .parse::<u32>()
+                    .unwrap();
+                let unit = words
+                    .next()
+                    .ok_or({
+                        let array: Vec<String> = stripped_str.split(' ').map_into().collect_vec();
+                        OutOfBoundsError {
+                            index: array
+                                .clone()
+                                .into_iter()
+                                .find_position(|word| word.parse::<u32>().is_ok())
+                                .map(|(i, _)| i as u32 + 1)
+                                .expect("A parsable u32 was found above."),
+                            array,
+                            parsing_step: "Components (material): currency".to_owned(),
+                        }
+                    })?
+                    .try_into()?;
+                Some(ItemValue { value, unit })
+            } else {
+                None
+            };
+            // Parse cost and consumption
+            Ok(Components {
+                verbal: false,
+                somatic: false,
+                material: Some(MaterialComponent {
+                    component,
+                    value,
+                    consumed,
+                }),
+            })
+        }
+        _ => Ok(Components {
+            verbal: false,
+            somatic: false,
+            material: None,
+        }),
     }
 }
 
@@ -313,7 +308,7 @@ fn parse_duration(duration_str: String) -> Result<Duration, Error> {
                 })?;
             let unit = words
                 .next()
-                .ok_or(out_of_bounds_error("Duration (concentration): unit"))?
+                .ok_or_else(|| out_of_bounds_error("Duration (concentration): unit"))?
                 .try_into()?;
             Ok(Duration::Timed(TimedDuration {
                 number,
@@ -322,19 +317,21 @@ fn parse_duration(duration_str: String) -> Result<Duration, Error> {
             }))
         }
         Some(word) => {
-            let number = match word.parse::<u8>() {
-                Ok(number) => Ok(number),
-                Err(_) => words
-                    .find_map(|word| word.parse::<u8>().ok())
-                    .ok_or(ParseError {
-                        string: duration_str.clone(),
-                        parsing_step: "Duration (Timed): amount".to_owned(),
-                        problem: Some("No number can be parsed as u8.".to_owned()),
-                    }),
-            }?;
+            let number = word.parse::<u8>().map_or_else(
+                |_| {
+                    words
+                        .find_map(|word| word.parse::<u8>().ok())
+                        .ok_or(ParseError {
+                            string: duration_str.clone(),
+                            parsing_step: "Duration (Timed): amount".to_owned(),
+                            problem: Some("No number can be parsed as u8.".to_owned()),
+                        })
+                },
+                Ok,
+            )?;
             let unit = words
                 .next()
-                .ok_or(out_of_bounds_error("Duration (Timed): unit"))?
+                .ok_or_else(|| out_of_bounds_error("Duration (Timed): unit"))?
                 .try_into()?;
             Ok(Duration::Timed(TimedDuration {
                 number,
@@ -380,12 +377,7 @@ where
         .into_iter()
         .map(
             // Collapse normal entries into one group.
-            |(key, entry)| {
-                (
-                    key,
-                    entry.cloned().map(|entry| entry.to_owned()).collect_vec(),
-                )
-            },
+            |(key, entry)| (key, entry.copied().map(ToOwned::to_owned).collect_vec()),
         )
         .find(|(key, _)| !*key) // Get the first group (which we just collapsed)
         .ok_or_else(|| ParseError {
@@ -393,8 +385,8 @@ where
                 .into_iter()
                 .map(|(_, entry)| {
                     entry
-                        .cloned()
-                        .map(|entry| entry.to_owned())
+                        .copied()
+                        .map(ToOwned::to_owned)
                         .collect_vec()
                         .join("\n")
                 })
@@ -424,7 +416,7 @@ where
     let at_higher_levels = entries_by_type
         .into_iter()
         .next()
-        .and_then(|(_, group)| group.into_iter().cloned().next())
+        .and_then(|(_, group)| group.into_iter().copied().next())
         .map(|entry| {
             entry
                 .split(' ')
@@ -446,26 +438,26 @@ fn parse_second_group(
     };
     let casting_time: CastingTime = group_stripped
         .get(0)
-        .ok_or(out_of_bounds_error(0, "CastingTime"))
+        .ok_or_else(|| out_of_bounds_error(0, "CastingTime"))
         .map(String::as_str)
         .map(parse_casting_time)??;
     let range = group_stripped
         .get(1)
-        .ok_or(out_of_bounds_error(1, "Range"))
+        .ok_or_else(|| out_of_bounds_error(1, "Range"))
         .map(String::as_str)
         .map(parse_range)??;
     let components = group
         .get(2)
-        .ok_or(out_of_bounds_error(2, "Components"))
+        .ok_or_else(|| out_of_bounds_error(2, "Components"))
         .map(|s| parse_components(s.to_owned().to_owned()))??;
     let duration = group_stripped
         .get(3)
-        .ok_or(out_of_bounds_error(3, "Duration"))
-        .map(|s| parse_duration(s.to_owned()))??;
+        .ok_or_else(|| out_of_bounds_error(3, "Duration"))
+        .map(|s| parse_duration(s.clone()))??;
     let classes = group_stripped
         .get(4)
-        .ok_or(out_of_bounds_error(4, "Classes"))
-        .map(|s| parse_classes(s.to_owned()))??;
+        .ok_or_else(|| out_of_bounds_error(4, "Classes"))
+        .map(|s| parse_classes(s.clone()))??;
     Ok((casting_time, range, components, duration, classes))
 }
 
@@ -514,7 +506,10 @@ fn parse_first_group(
 impl TryFrom<&str> for MagicSchool {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use MagicSchool::*;
+        use MagicSchool::{
+            Abjuration, Conjuration, Divination, Enchantment, Evocation, Illusion, Necromancy,
+            Transmutation,
+        };
         match value.to_lowercase().as_str() {
             "abjuration" => Ok(Abjuration),
             "conjuration" => Ok(Conjuration),
@@ -536,18 +531,13 @@ impl TryFrom<&str> for MagicSchool {
 impl TryFrom<&str> for TimeUnit {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use TimeUnit::*;
+        use TimeUnit::{Day, Hour, Minute, Round, Year};
         match value.to_lowercase().as_str() {
-            "round" => Ok(Round),
-            "rounds" => Ok(Round),
-            "minute" => Ok(Minute),
-            "minutes" => Ok(Minute),
-            "hour" => Ok(Hour),
-            "hours" => Ok(Hour),
-            "day" => Ok(Day),
-            "days" => Ok(Day),
-            "year" => Ok(Year),
-            "years" => Ok(Year),
+            "rounds" | "round" => Ok(Round),
+            "minute" | "minutes" => Ok(Minute),
+            "hour" | "hours" => Ok(Hour),
+            "day" | "days" => Ok(Day),
+            "year" | "years" => Ok(Year),
             _ => Err(ParseError {
                 string: value.to_owned(),
                 parsing_step: "TimeUnit".to_owned(),
@@ -560,13 +550,12 @@ impl TryFrom<&str> for TimeUnit {
 impl TryFrom<&str> for ActionType {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use ActionType::*;
+        use ActionType::{Action, BonusAction, Reaction};
         match value.to_lowercase().as_str() {
-            "bonus action" => Ok(BonusAction),
-            "bonus" => Ok(BonusAction),
+            "bonus" | "bonus action" => Ok(BonusAction),
             "action" => Ok(Action),
             "reaction" => Ok(Reaction {
-                condition: "".to_owned(),
+                condition: String::new(),
             }),
             _ => Err(ParseError {
                 string: value.to_owned(),
@@ -580,10 +569,10 @@ impl TryFrom<&str> for ActionType {
 impl TryFrom<&str> for CastingTimeUnit {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use CastingTimeUnit::*;
+        use CastingTimeUnit::{Action, Time};
         let maybe_action = value.try_into().map(Action);
         maybe_action
-            .or(value.try_into().map(Time))
+            .or_else(|_| value.try_into().map(Time))
             .map_err(|error| ParseError {
                 string: error.string,
                 parsing_step: "CastingTimeUnit".to_owned(),
@@ -595,12 +584,10 @@ impl TryFrom<&str> for CastingTimeUnit {
 impl TryFrom<&str> for RangeUnit {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use RangeUnit::*;
+        use RangeUnit::{Feet, Miles};
         match value.to_lowercase().as_str() {
-            "feet" => Ok(Feet),
-            "foot" => Ok(Feet),
-            "mile" => Ok(Miles),
-            "miles" => Ok(Miles),
+            "foot" | "feet" => Ok(Feet),
+            "mile" | "miles" => Ok(Miles),
             _ => Err(ParseError {
                 string: value.to_owned(),
                 parsing_step: "RangeUnit".to_owned(),
@@ -613,7 +600,7 @@ impl TryFrom<&str> for RangeUnit {
 impl TryFrom<&str> for TargetType {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use TargetType::*;
+        use TargetType::{Cone, Point, Radius};
         match value.to_lowercase().as_str() {
             "point" => Ok(Point),
             "radius" => Ok(Radius),
@@ -630,18 +617,13 @@ impl TryFrom<&str> for TargetType {
 impl TryFrom<&str> for Currency {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use Currency::*;
+        use Currency::{Copper, Electrum, Gold, Platinum, Silver};
         match value.to_lowercase().as_str() {
-            "cp" => Ok(Copper),
-            "copper" => Ok(Copper),
-            "sp" => Ok(Silver),
-            "silver" => Ok(Silver),
-            "ep" => Ok(Electrum),
-            "electrum" => Ok(Electrum),
-            "gp" => Ok(Gold),
-            "gold" => Ok(Gold),
-            "pp" => Ok(Platinum),
-            "platinume" => Ok(Platinum),
+            "cp" | "copper" => Ok(Copper),
+            "sp" | "silver" => Ok(Silver),
+            "ep" | "electrum" => Ok(Electrum),
+            "gp" | "gold" => Ok(Gold),
+            "pp" | "platinum" => Ok(Platinum),
             _ => Err(ParseError {
                 string: value.to_owned(),
                 parsing_step: "Currency".to_owned(),
@@ -654,7 +636,10 @@ impl TryFrom<&str> for Currency {
 impl TryFrom<&str> for Classes {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use Classes::*;
+        use Classes::{
+            Artificer, Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue,
+            Sorcerer, Warlock, Wizard,
+        };
         match value.to_lowercase().as_str() {
             "artificer" => Ok(Artificer),
             "barbarian" => Ok(Barbarian),
@@ -681,7 +666,10 @@ impl TryFrom<&str> for Classes {
 impl TryFrom<&str> for DamageType {
     type Error = ParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        use DamageType::*;
+        use DamageType::{
+            Acid, Bludgeoning, Cold, Fire, Force, Lightning, Necrotic, Piercing, Poison, Psychic,
+            Radiant, Slashing, Thunder,
+        };
         match value.to_lowercase().as_str() {
             "acid" => Ok(Acid),
             "bludgeoning" => Ok(Bludgeoning),
