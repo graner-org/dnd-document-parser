@@ -254,19 +254,6 @@ pub struct Spell<'a> {
     pub classes: Vec<Classes>,
 }
 
-fn description_serialization(description: &[String]) -> Value {
-    let description_with_lists = description
-        .iter()
-        .group_by(|entry| entry.starts_with("- ")) // Get groups of lists
-        .into_iter()
-        .flat_map(|(key, group)| if key { vec![json!({
-                "type": "list",
-                "items": group.into_iter().map(|entry| entry.strip_prefix("- ").unwrap()).collect_vec(),
-            })] } else { group.into_iter().map(|entry| json!(entry)).collect_vec() })
-        .collect_vec();
-    json!(description_with_lists)
-}
-
 impl<'a> To5etools for Spell<'a> {
     fn to_5etools_base(&self) -> Value {
         let source = self.source.to_5etools_base();
