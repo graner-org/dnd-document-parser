@@ -1,4 +1,6 @@
-use crate::models::common::{ActionType, Classes, DamageType, RangeUnit, Source, TimeUnit};
+use crate::models::common::{
+    ActionType, Classes, DamageType, Description, RangeUnit, Source, TimeUnit,
+};
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::{
     CastingTime, CastingTimeUnit, Components, Duration, MagicSchool, MaterialComponent, Range,
@@ -17,7 +19,7 @@ type Name = String;
 type SpellLevel = u8;
 type Ritual = bool;
 type MaybeDamageType = Option<Vec<DamageType>>;
-type Entries = Vec<String>;
+type Entries = Vec<Description>;
 type AtHigherLevels = Option<String>;
 
 pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell, Error> {
@@ -373,11 +375,11 @@ where
     let entries_by_type = all_entries
         .flatten()
         .group_by(|entry| entry.starts_with("**"));
-    let main_entries = entries_by_type
+    let main_entries: Vec<String> = entries_by_type
         .into_iter()
         .map(
             // Collapse normal entries into one group.
-            |(key, entry)| (key, entry.copied().map(ToOwned::to_owned).collect_vec()),
+            |(key, entry)| (key, entry.copied().map(ToOwned::to_owned).collect()),
         )
         .find(|(key, _)| !*key) // Get the first group (which we just collapsed)
         .ok_or_else(|| ParseError {
@@ -407,6 +409,24 @@ where
         })
         .unique()
         .collect_vec();
+    let main_entries: Vec<Description> = main_entries
+        .iter()
+        .group_by(|entry| entry.starts_with("- "))
+        .into_iter()
+        .flat_map(|(is_list_item, entry)| {
+            if is_list_item {
+                vec![Description::List(
+                    entry
+                        .flat_map(|line| line.strip_prefix("- "))
+                        .map(str::to_owned)
+                        .map(Description::Entry)
+                        .collect(),
+                )]
+            } else {
+                entry.cloned().map(Description::Entry).collect()
+            }
+        })
+        .collect();
     let damage_types = if damage_types.is_empty() {
         None
     } else {
