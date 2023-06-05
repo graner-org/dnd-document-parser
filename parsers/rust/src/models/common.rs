@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use regex::Regex;
 use serde_json::{json, Value};
 
 use crate::utils::traits::To5etools;
@@ -17,7 +18,15 @@ impl To5etools for Description {
     fn to_5etools_base(&self) -> Value {
         use Description::{Entry, List};
         match self {
-            Entry(entry) => Value::String(entry.clone()),
+            Entry(entry) => {
+                // Capture e.g. "2d4" or "20d12"
+                let dice_capture = Regex::new(r"(?P<dice>\d+d\d+)").unwrap();
+                Value::String(
+                    dice_capture
+                        .replace_all(entry, "{@damage $dice}")
+                        .to_string(),
+                )
+            }
             List(list_entries) => json!({
                 "type": "list",
                 "items": list_entries.iter().map(Self::to_5etools_base).collect_vec()
