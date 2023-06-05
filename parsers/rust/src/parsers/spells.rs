@@ -409,6 +409,11 @@ where
         })
         .unique()
         .collect_vec();
+    let damage_types = if damage_types.is_empty() {
+        None
+    } else {
+        Some(damage_types)
+    };
     let main_entries: Vec<Description> = main_entries
         .iter()
         .group_by(|entry| entry.starts_with("- "))
@@ -417,6 +422,7 @@ where
             if is_list_item {
                 vec![Description::List(
                     entry
+                        // We know from the grouping that the line starts with "- "
                         .flat_map(|line| line.strip_prefix("- "))
                         .map(str::to_owned)
                         .map(Description::Entry)
@@ -427,11 +433,6 @@ where
             }
         })
         .collect();
-    let damage_types = if damage_types.is_empty() {
-        None
-    } else {
-        Some(damage_types)
-    };
     // Coerce into needed format.
     let at_higher_levels = entries_by_type
         .into_iter()
@@ -441,6 +442,7 @@ where
             entry
                 .split(' ')
                 .filter(|group| !group.is_empty()) // Collapse multiple whitespaces
+                // Drop the starting 3 words "**At higher levels.**"
                 .dropping(3)
                 .join(" ")
         });
