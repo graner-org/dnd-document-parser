@@ -55,7 +55,7 @@
         }
       ],
       "entries": [
-        "Make a ranged spell attack against the target. On a hit, the creature takes 2d4 necrotic damage.",
+        "Make a ranged spell attack against the target. On a hit, the creature takes {@damage 2d4} necrotic damage.",
         "At the end of each of the target’s turns, it can make a Constitution saving throw against the spell. On a success, the spell ends for the target."
       ],
       "entriesHigherLevel": [
