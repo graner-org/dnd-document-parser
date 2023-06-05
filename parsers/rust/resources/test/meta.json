@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "sources": [
+      {
+        "json": "",
+        "abbreviation": "test-source",
+        "full": "",
+        "authors": [""],
+        "convertedBy": [""],
+        "version": "1.0",
+        "url": "test_url",
+        "targetSchema": "1.0"
+      }
+    ],
+    "dateAdded": 0,
+    "dateLastModified": 0
+  }
+}

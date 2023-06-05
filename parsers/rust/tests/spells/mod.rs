@@ -14,11 +14,15 @@ fn read_json_file(filename: String) -> Value {
 
 #[test]
 fn gmbinder_parse_single_spell() {
-    let resource_dir = format!("{}/resources/test/spells", env!("CARGO_MANIFEST_DIR"));
-    let gmbinder_source = format!("{resource_dir}/gm_binder_input.html",);
-    let expected_source = format!("{resource_dir}/gm_binder_output.json",);
+    let resource_dir = format!("{}/resources/test", env!("CARGO_MANIFEST_DIR"));
+    let spell_resource_dir = format!("{resource_dir}/spells");
+    let gmbinder_source = format!("{spell_resource_dir}/gm_binder_input.html",);
+    let meta_source = format!("{resource_dir}/meta.json",);
+    let expected_source = format!("{spell_resource_dir}/gm_binder_output.json",);
+    let meta = read_json_file(meta_source);
+    let abbrev = &meta["_meta"]["sources"][0]["abbreviation"];
     let source_book = Source {
-        source_book: "test-source",
+        source_book: abbrev.as_str().unwrap(),
         page: 0,
     };
     let spell = read_to_string(gmbinder_source.clone())
@@ -30,7 +34,8 @@ fn gmbinder_parse_single_spell() {
     let expected_json = expected_json
         .get("spell")
         .and_then(|val| val.get(0))
-        .unwrap().clone();
+        .unwrap()
+        .clone();
     let comparison = json_compare(parsed_spell, expected_json);
     assert!(
         comparison.is_ok(),
@@ -40,11 +45,15 @@ fn gmbinder_parse_single_spell() {
 
 #[test]
 fn gmbinder_parse_multiple_spells() {
-    let resource_dir = format!("{}/resources/test/spells", env!("CARGO_MANIFEST_DIR"));
-    let gmbinder_source = format!("{resource_dir}/gm_binder_input_multiple.html",);
-    let expected_source = format!("{resource_dir}/gm_binder_output_multiple.json",);
+    let resource_dir = format!("{}/resources/test", env!("CARGO_MANIFEST_DIR"));
+    let spell_resource_dir = format!("{resource_dir}/spells");
+    let gmbinder_source = format!("{spell_resource_dir}/gm_binder_input.html",);
+    let meta_source = format!("{resource_dir}/meta.json",);
+    let expected_source = format!("{spell_resource_dir}/gm_binder_output.json",);
+    let meta = read_json_file(meta_source);
+    let abbrev = &meta["_meta"]["sources"][0]["abbreviation"];
     let source_book = Source {
-        source_book: "test-source",
+        source_book: abbrev.as_str().unwrap(),
         page: 0,
     };
     let spells = read_to_string(gmbinder_source.clone())
