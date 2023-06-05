@@ -1,5 +1,5 @@
 use super::{parse_casting_time, parse_entries};
-use crate::models::common::{ActionType, Classes, DamageType, RangeUnit, TimeUnit};
+use crate::models::common::{ActionType, Classes, DamageType, Description, RangeUnit, TimeUnit};
 use crate::models::items::{Currency, ItemValue};
 use crate::models::spells::{
     CastingTime, CastingTimeUnit, Components, Duration, MaterialComponent, Range, TargetType,
@@ -214,6 +214,7 @@ fn parse_classes_test() {
 #[test]
 fn parse_entries_test() {
     use DamageType::{Acid, Necrotic};
+    use Description::{Entry, List};
     assert_eq!(
         parse_entries(
             vec![
@@ -225,7 +226,7 @@ fn parse_entries_test() {
         ),
         Ok((
             None,
-            vec!["entry 1".to_owned(), "entry 2".to_owned()],
+            vec![Entry("entry 1".to_owned()), Entry("entry 2".to_owned())],
             Some("Entry 3".to_owned())
         )),
     );
@@ -240,12 +241,37 @@ fn parse_entries_test() {
         ),
         Ok((
             Some(vec![Acid, Necrotic]),
-            vec!["AcId 1".to_owned(), "entry neCRotic 2".to_owned()],
+            vec![
+                Entry("AcId 1".to_owned()),
+                Entry("entry neCRotic 2".to_owned())
+            ],
             Some("Entry 3".to_owned())
         )),
     );
     assert_eq!(
         parse_entries(vec![vec!["entry 1"], vec!["entry 2"],].iter()),
-        Ok((None, vec!["entry 1".to_owned(), "entry 2".to_owned()], None)),
+        Ok((
+            None,
+            vec![Entry("entry 1".to_owned()), Entry("entry 2".to_owned())],
+            None
+        )),
+    );
+    assert_eq!(
+        parse_entries(
+            vec![
+                vec!["- Line 1"],
+                vec!["- Line 2 acid"],
+                vec!["**At higher levels.** Entry 3"],
+            ]
+            .iter()
+        ),
+        Ok((
+            Some(vec![Acid]),
+            vec![List(vec![
+                Entry("Line 1".to_owned()),
+                Entry("Line 2 acid".to_owned())
+            ])],
+            Some("Entry 3".to_owned()),
+        ))
     );
 }

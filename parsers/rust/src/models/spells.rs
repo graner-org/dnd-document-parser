@@ -1,6 +1,8 @@
 use crate::utils::traits::To5etools;
 
-use super::common::{ActionType, Classes, DamageType, RangeUnit, Source, TimeUnit, merge_json};
+use super::common::{
+    merge_json, ActionType, Classes, DamageType, Description, RangeUnit, Source, TimeUnit,
+};
 use super::items::ItemValue;
 use itertools::Itertools;
 use serde_json::{json, Value};
@@ -23,7 +25,10 @@ pub enum MagicSchool {
 
 impl To5etools for MagicSchool {
     fn to_5etools_base(&self) -> Value {
-        use MagicSchool::{Abjuration, Conjuration, Divination, Enchantment, Evocation, Illusion, Necromancy, Transmutation};
+        use MagicSchool::{
+            Abjuration, Conjuration, Divination, Enchantment, Evocation, Illusion, Necromancy,
+            Transmutation,
+        };
         json!(match self {
             Abjuration => "A",
             Conjuration => "C",
@@ -127,7 +132,10 @@ impl To5etools for MaterialComponent {
             json!(self.component)
         } else {
             let text = json!({ "text": self.component });
-            let value = self.value.map_or_else(|| json!({}), |value| json!({ "cost": value.to_5etools_spell() }));
+            let value = self.value.map_or_else(
+                || json!({}),
+                |value| json!({ "cost": value.to_5etools_spell() }),
+            );
             let consumed = if self.consumed {
                 json!({"consume": true})
             } else {
@@ -147,9 +155,20 @@ pub struct Components {
 
 impl To5etools for Components {
     fn to_5etools_base(&self) -> Value {
-        let verbal = if self.verbal { json!({"v": true}) } else { json!({}) };
-        let somatic = if self.somatic { json!({"s": true}) } else { json!({}) };
-        let material = self.material.as_ref().map_or_else(|| json!({}), |material| json!({ "m": material.to_5etools_spell() }));
+        let verbal = if self.verbal {
+            json!({"v": true})
+        } else {
+            json!({})
+        };
+        let somatic = if self.somatic {
+            json!({"s": true})
+        } else {
+            json!({})
+        };
+        let material = self.material.as_ref().map_or_else(
+            || json!({}),
+            |material| json!({ "m": material.to_5etools_spell() }),
+        );
         merge_json(vec![verbal, somatic, material])
     }
 }
@@ -187,7 +206,11 @@ impl To5etools for TimedDuration {
                 "amount": self.number,
             }
         });
-        let concentration = if self.concentration { json!({"concentration": true}) } else { json!({}) };
+        let concentration = if self.concentration {
+            json!({"concentration": true})
+        } else {
+            json!({})
+        };
         merge_json(vec![duration, concentration])
     }
 }
@@ -226,7 +249,7 @@ pub struct Spell<'a> {
     pub range: Range,
     pub components: Components,
     pub damage_types: Option<Vec<DamageType>>,
-    pub description: Vec<String>,
+    pub description: Vec<Description>,
     pub at_higher_levels: Option<String>,
     pub classes: Vec<Classes>,
 }
@@ -255,26 +278,41 @@ impl<'a> To5etools for Spell<'a> {
             "range": self.range.to_5etools_spell(),
             "components": self.components.to_5etools_spell(),
             "duration": self.duration.to_5etools_spell(),
-            "entries": description_serialization(&self.description),
+            // "entries": description_serialization(&self.description),
+            "entries": self.description.iter().map(To5etools::to_5etools_spell).collect_vec(),
             "classes": json!({
                 "fromClassList": self.classes.to_5etools_spell()
             }),
         });
-        let damage_type = self.damage_types.as_ref().map_or_else(|| json!({}), |damage_types| json!({
-                "damageInflict": damage_types.to_5etools_spell(),
-            }));
-        let at_higher_levels = self.at_higher_levels.as_ref().map_or_else(|| json!({}), |entries| json!({
-                "entriesHigherLevel": [{
-                    "type": "entries",
-                    "name": "At Higher Levels",
-                    "entries": [ entries ],
-                }]
-            }));
-        let ritual = if self.ritual { json!({
+        let damage_type = self.damage_types.as_ref().map_or_else(
+            || json!({}),
+            |damage_types| {
+                json!({
+                    "damageInflict": damage_types.to_5etools_spell(),
+                })
+            },
+        );
+        let at_higher_levels = self.at_higher_levels.as_ref().map_or_else(
+            || json!({}),
+            |entries| {
+                json!({
+                    "entriesHigherLevel": [{
+                        "type": "entries",
+                        "name": "At Higher Levels",
+                        "entries": [ entries ],
+                    }]
+                })
+            },
+        );
+        let ritual = if self.ritual {
+            json!({
                 "meta": {
                     "ritual": true,
                 },
-            }) } else { json!({}) };
+            })
+        } else {
+            json!({})
+        };
         merge_json(vec![
             source,
             main_body,

@@ -181,7 +181,7 @@ fn spell_test() {
             }),
         },
         damage_types: None,
-        description: vec!["You touch a creature that has died within the last minute. That creature returns to life with 1 hit point. This spell can't return to life a creature that has died of old age, nor can it restore any missing body parts.".to_owned()],
+        description: vec![Description::Entry("You touch a creature that has died within the last minute. That creature returns to life with 1 hit point. This spell can't return to life a creature that has died of old age, nor can it restore any missing body parts.".to_owned())],
         at_higher_levels: None,
         classes: vec![Classes::Cleric, Classes::Paladin, Classes::Artificer],
     };
