@@ -1,6 +1,30 @@
+use itertools::Itertools;
 use serde_json::{json, Value};
 
 use crate::utils::traits::To5etools;
+
+#[cfg(test)]
+mod tests;
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Description {
+    Entry(String),
+    List(Vec<Self>),
+}
+
+impl To5etools for Description {
+    fn to_5etools_base(&self) -> Value {
+        use Description::{Entry, List};
+        match self {
+            Entry(entry) => Value::String(entry.clone()),
+            List(list_entries) => json!({
+                "type": "list",
+                "items": list_entries.iter().map(Self::to_5etools_base).collect_vec()
+            }),
+        }
+    }
+}
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,7 +61,8 @@ impl To5etools for ActionType {
     }
 }
 
-#[must_use] pub fn merge_json(json_vec: Vec<Value>) -> Value {
+#[must_use]
+pub fn merge_json(json_vec: Vec<Value>) -> Value {
     json_vec
         .into_iter()
         .map(|json: Value| json.as_object().unwrap().clone()) // Value -> Map<String, value>
@@ -106,7 +131,10 @@ pub enum DamageType {
 
 impl To5etools for DamageType {
     fn to_5etools_base(&self) -> Value {
-        use DamageType::{Acid, Bludgeoning, Cold, Fire, Force, Lightning, Necrotic, Piercing, Poison, Psychic, Radiant, Slashing, Thunder};
+        use DamageType::{
+            Acid, Bludgeoning, Cold, Fire, Force, Lightning, Necrotic, Piercing, Poison, Psychic,
+            Radiant, Slashing, Thunder,
+        };
         json!(match self {
             Acid => "acid",
             Bludgeoning => "bludgeoning",
@@ -145,7 +173,10 @@ pub enum Classes {
 
 impl To5etools for Classes {
     fn to_5etools_base(&self) -> Value {
-        use Classes::{Artificer, Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard};
+        use Classes::{
+            Artificer, Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue,
+            Sorcerer, Warlock, Wizard,
+        };
         json!(match self {
             Artificer => "Artificer",
             Barbarian => "Barbarian",
