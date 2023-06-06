@@ -292,3 +292,55 @@ impl To5etools for AbilityScore {
         )
     }
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Skill {
+    Acrobatics,
+    AnimalHandling,
+    Arcana,
+    Athletics,
+    Deception,
+    History,
+    Insight,
+    Intimidation,
+    Investigation,
+    Medicine,
+    Nature,
+    Perception,
+    Performance,
+    Persuasion,
+    Religion,
+    SleightOfHand,
+    Stealth,
+    Survival,
+}
+
+impl To5etools for Skill {
+    fn to_5etools_base(&self) -> Value {
+        use Skill::*;
+        Value::String(
+            match self {
+                Acrobatics => "acrobatics",
+                AnimalHandling => "animal handling",
+                Arcana => "arcana",
+                Athletics => "athletics",
+                Deception => "deception",
+                History => "history",
+                Insight => "insight",
+                Intimidation => "intimidation",
+                Investigation => "investigation",
+                Medicine => "medicine",
+                Nature => "nature",
+                Perception => "perception",
+                Performance => "performance",
+                Persuasion => "persuasion",
+                Religion => "religion",
+                SleightOfHand => "sleight of hand",
+                Stealth => "stealth",
+                Survival => "survival",
+            }
+            .to_owned(),
+        )
+    }
+}
