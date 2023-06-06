@@ -344,3 +344,51 @@ impl To5etools for Skill {
         )
     }
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Language {
+    Common,
+    Dwarvish,
+    Elvish,
+    Giant,
+    Gnomish,
+    Goblin,
+    Halfling,
+    Orc,
+    Abyssal,
+    Celestial,
+    Draconic,
+    DeepSpeech,
+    Infernal,
+    Primordial,
+    Sylvan,
+    Undercommon,
+}
+
+impl To5etools for Language {
+    fn to_5etools_base(&self) -> Value {
+        use Language::*;
+        Value::String(
+            match self {
+                Common => "Common",
+                Dwarvish => "Dwarvish",
+                Elvish => "Elvish",
+                Giant => "Giant",
+                Gnomish => "Gnomish",
+                Goblin => "Goblin",
+                Halfling => "Halfling",
+                Orc => "Orc",
+                Abyssal => "Abyssal",
+                Celestial => "Celestial",
+                Draconic => "Draconic",
+                DeepSpeech => "Deep Speech",
+                Infernal => "Infernal",
+                Primordial => "Primordial",
+                Sylvan => "Sylvan",
+                Undercommon => "Undercommon",
+            }
+            .to_owned(),
+        )
+    }
+}
