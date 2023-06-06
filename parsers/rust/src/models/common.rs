@@ -220,3 +220,47 @@ impl Classes {
         .to_owned()
     }
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StatusCondition {
+    Blinded,
+    Charmed,
+    Deafened,
+    Exhaustion,
+    Frightened,
+    Grappled,
+    Incapacitated,
+    Invisible,
+    Paralyzed,
+    Petrified,
+    Poisoned,
+    Prone,
+    Restrained,
+    Stunned,
+}
+
+impl To5etools for StatusCondition {
+    fn to_5etools_base(&self) -> Value {
+        use StatusCondition::*;
+        Value::String(
+            match self {
+                Blinded => "blinded",
+                Charmed => "charmed",
+                Deafened => "deafened",
+                Exhaustion => "exhaustion",
+                Frightened => "frightened",
+                Grappled => "grappled",
+                Incapacitated => "incapacitated",
+                Invisible => "invisible",
+                Paralyzed => "paralyzed",
+                Petrified => "petrified",
+                Poisoned => "poisoned",
+                Prone => "prone",
+                Restrained => "restrained",
+                Stunned => "stunned",
+            }
+            .to_owned(),
+        )
+    }
+}
