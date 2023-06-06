@@ -10,6 +10,7 @@ pub mod parsers {
 
 pub mod models {
     pub mod common;
+    pub mod creatures;
     pub mod items;
     pub mod spells;
 }
