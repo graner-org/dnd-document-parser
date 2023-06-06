@@ -264,3 +264,31 @@ impl To5etools for StatusCondition {
         )
     }
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AbilityScore {
+    Strength,
+    Dexterity,
+    Constitution,
+    Intelligence,
+    Wisdom,
+    Charisma,
+}
+
+impl To5etools for AbilityScore {
+    fn to_5etools_base(&self) -> Value {
+        use AbilityScore::*;
+        Value::String(
+            match self {
+                Strength => "str",
+                Dexterity => "dex",
+                Constitution => "con",
+                Intelligence => "int",
+                Wisdom => "wis",
+                Charisma => "cha",
+            }
+            .to_owned(),
+        )
+    }
+}
