@@ -36,7 +36,7 @@ impl To5etools for Size {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CreatureType {
+pub enum CreatureTypeEnum {
     Aberration,
     Beast,
     Celestial,
@@ -53,9 +53,9 @@ pub enum CreatureType {
     Undead,
 }
 
-impl To5etools for CreatureType {
+impl To5etools for CreatureTypeEnum {
     fn to_5etools_base(&self) -> Value {
-        use CreatureType::*;
+        use CreatureTypeEnum::*;
         Value::String(
             match self {
                 Aberration => "aberration",
@@ -241,5 +241,26 @@ impl To5etools for DamageModifier {
             Conditional(conditional) => conditional.to_5etools_base(),
             Unconditional(unconditional) => unconditional.to_5etools_base(),
         }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreatureType {
+    pub main_type: CreatureTypeEnum,
+    pub subtypes: Option<Vec<String>>,
+}
+
+impl To5etools for CreatureType {
+    fn to_5etools_base(&self) -> Value {
+        self.subtypes.as_ref().map_or_else(
+            || self.main_type.to_5etools_base(),
+            |subtypes| {
+                json!({
+                    "type": self.main_type.to_5etools_base(),
+                    "tags": subtypes,
+                })
+            },
+        )
     }
 }

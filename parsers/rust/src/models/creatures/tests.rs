@@ -4,8 +4,8 @@ use crate::{
     models::{
         common::DamageType,
         creatures::{
-            ConditionalDamageModifier, DamageModifier, DamageModifierType, FlySpeed, HitPoints,
-            HitPointsFormula, Speed,
+            ConditionalDamageModifier, CreatureType, CreatureTypeEnum, DamageModifier,
+            DamageModifierType, FlySpeed, HitPoints, HitPointsFormula, Speed,
         },
     },
     utils::traits::To5etools,
@@ -104,9 +104,34 @@ fn damage_resistance() {
         })
         .to_5etools_base(),
         json!({
-            "resist": vec!["acid", "fire"],
+            "resist": ["acid", "fire"],
             "note": "that is non-magical",
             "cond": true,
+        })
+    );
+}
+
+#[test]
+fn creature_type() {
+    use CreatureTypeEnum::Fiend;
+    assert_eq!(
+        CreatureType {
+            main_type: Fiend,
+            subtypes: None,
+        }
+        .to_5etools_base(),
+        json!("fiend")
+    );
+
+    assert_eq!(
+        CreatureType {
+            main_type: Fiend,
+            subtypes: Some(vec!["demon".to_string()]),
+        }
+        .to_5etools_base(),
+        json!({
+            "type": "fiend",
+            "tags": ["demon"]
         })
     );
 }
