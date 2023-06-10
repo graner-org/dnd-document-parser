@@ -1,4 +1,6 @@
-use crate::models::common::Description;
+use crate::models::common::{
+    Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder, Description,
+};
 use crate::utils::traits::To5etools;
 use serde_json::json;
 
@@ -50,5 +52,26 @@ fn description_test() {
                 }
             ]
         })
+    );
+}
+
+#[test]
+fn alignment_test() {
+    use Alignment::*;
+
+    assert_eq!(Any.to_5etools_creature(), json!(["A"]));
+
+    assert_eq!(
+        OneAxis(AlignmentAxis::Moral(AlignmentAxisMoral::Good)).to_5etools_creature(),
+        json!(["G"])
+    );
+
+    assert_eq!(
+        TwoAxes {
+            moral: AlignmentAxisMoral::Evil,
+            order: AlignmentAxisOrder::Neutral,
+        }
+        .to_5etools_creature(),
+        json!(["N", "E"])
     );
 }

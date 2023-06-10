@@ -392,3 +392,88 @@ impl To5etools for Language {
         )
     }
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AlignmentAxisOrder {
+    Lawful,
+    Neutral,
+    Chaotic,
+}
+
+impl To5etools for AlignmentAxisOrder {
+    fn to_5etools_base(&self) -> Value {
+        use AlignmentAxisOrder::*;
+        Value::String(
+            match self {
+                Lawful => "L",
+                Neutral => "N",
+                Chaotic => "C",
+            }
+            .to_owned(),
+        )
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AlignmentAxisMoral {
+    Good,
+    Neutral,
+    Evil,
+}
+
+impl To5etools for AlignmentAxisMoral {
+    fn to_5etools_base(&self) -> Value {
+        use AlignmentAxisMoral::*;
+        Value::String(
+            match self {
+                Good => "G",
+                Neutral => "N",
+                Evil => "E",
+            }
+            .to_owned(),
+        )
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AlignmentAxis {
+    Order(AlignmentAxisOrder),
+    Moral(AlignmentAxisMoral),
+}
+
+impl To5etools for AlignmentAxis {
+    fn to_5etools_base(&self) -> Value {
+        use AlignmentAxis::*;
+        match self {
+            Order(order) => order.to_5etools_base(),
+            Moral(moral) => moral.to_5etools_base(),
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Alignment {
+    OneAxis(AlignmentAxis),
+    TwoAxes {
+        order: AlignmentAxisOrder,
+        moral: AlignmentAxisMoral,
+    },
+    Any,
+    Unaligned,
+}
+
+impl To5etools for Alignment {
+    fn to_5etools_base(&self) -> Value {
+        use Alignment::*;
+        json!(match self {
+            Any => vec![json!("A")],
+            Unaligned => vec![json!("U")],
+            OneAxis(axis) => vec![axis.to_5etools_base()],
+            TwoAxes { order, moral } => vec![order.to_5etools_base(), moral.to_5etools_base()],
+        })
+    }
+}
