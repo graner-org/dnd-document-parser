@@ -75,3 +75,38 @@ impl To5etools for CreatureType {
         )
     }
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HitPointsFormula {
+    pub number_of_dice: u8,
+    pub die_size: u8,
+    pub modifier: u16,
+}
+
+impl To5etools for HitPointsFormula {
+    fn to_5etools_base(&self) -> Value {
+        Value::String(format!(
+            "{no_dice}d{die_size} + {modifier}",
+            no_dice = self.number_of_dice,
+            die_size = self.die_size,
+            modifier = self.modifier
+        ))
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HitPoints {
+    pub average: u16,
+    pub formula: HitPointsFormula,
+}
+
+impl To5etools for HitPoints {
+    fn to_5etools_base(&self) -> Value {
+        json!({
+            "average": self.average,
+            "formula": self.formula.to_5etools_base(),
+        })
+    }
+}
