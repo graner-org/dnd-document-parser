@@ -1,7 +1,13 @@
 use serde_json::json;
 
 use crate::{
-    models::creatures::{FlySpeed, HitPoints, HitPointsFormula, Speed},
+    models::{
+        common::DamageType,
+        creatures::{
+            ConditionalDamageModifier, DamageModifier, DamageModifierType, FlySpeed, HitPoints,
+            HitPointsFormula, Speed,
+        },
+    },
     utils::traits::To5etools,
 };
 
@@ -79,5 +85,28 @@ fn speed() {
         }
         .to_5etools_base(),
         json!({"walk": 0, "fly": { "number": 60, "condition": "(hover)" }, "swim": 10})
+    );
+}
+
+#[test]
+fn damage_resistance() {
+    use DamageType::{Acid, Fire};
+    assert_eq!(
+        DamageModifier::Unconditional(Acid).to_5etools_base(),
+        json!("acid")
+    );
+
+    assert_eq!(
+        DamageModifier::Conditional(ConditionalDamageModifier {
+            modifier_type: DamageModifierType::Resistance,
+            damage_types: vec![Acid, Fire],
+            condition: "that is non-magical".to_string()
+        })
+        .to_5etools_base(),
+        json!({
+            "resist": vec!["acid", "fire"],
+            "note": "that is non-magical",
+            "cond": true,
+        })
     );
 }
