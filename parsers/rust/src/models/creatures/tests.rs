@@ -4,7 +4,7 @@ use crate::{
     models::{
         common::DamageType,
         creatures::{
-            ConditionalDamageModifier, CreatureType, CreatureTypeEnum, DamageModifier,
+            ArmorClass, ConditionalDamageModifier, CreatureType, CreatureTypeEnum, DamageModifier,
             DamageModifierType, FlySpeed, HitPoints, HitPointsFormula, Speed,
         },
     },
@@ -133,5 +133,31 @@ fn creature_type() {
             "type": "fiend",
             "tags": ["demon"]
         })
+    );
+}
+
+#[test]
+fn armor_class() {
+    assert_eq!(
+        ArmorClass {
+            ac: 10,
+            armor_type: None
+        }
+        .to_5etools_base(),
+        json!([10])
+    );
+
+    assert_eq!(
+        ArmorClass {
+            ac: 10,
+            armor_type: Some("Natural Armor".to_string())
+        }
+        .to_5etools_base(),
+        json!([
+            {
+                "ac": 10,
+                "from": ["Natural Armor"]
+            }
+        ])
     );
 }

@@ -264,3 +264,24 @@ impl To5etools for CreatureType {
         )
     }
 }
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArmorClass {
+    pub ac: u8,
+    pub armor_type: Option<String>,
+}
+
+impl To5etools for ArmorClass {
+    fn to_5etools_base(&self) -> Value {
+        self.armor_type.as_ref().map_or_else(
+            || json!([self.ac]),
+            |armor_type| {
+                json!([{
+                    "ac": self.ac,
+                    "from": [armor_type],
+                }])
+            },
+        )
+    }
+}
