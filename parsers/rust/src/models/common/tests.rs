@@ -1,5 +1,5 @@
 use crate::models::common::{
-    Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder, Description,
+    Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder, Description, NamedEntry,
 };
 use crate::utils::traits::To5etools;
 use serde_json::json;
@@ -21,6 +21,11 @@ fn description_test() {
     assert_eq!(
         Entry("Entry 20d12 Line 2d6".to_owned()).to_5etools_spell(),
         json!("Entry {@damage 20d12} Line {@damage 2d6}")
+    );
+
+    assert_eq!(
+        Entry("Entry 20d12 + 10 Line 2d6 - 4".to_owned()).to_5etools_spell(),
+        json!("Entry {@damage 20d12 + 10} Line {@damage 2d6 - 4}")
     );
 
     assert_eq!(
@@ -73,5 +78,50 @@ fn alignment_test() {
         }
         .to_5etools_creature(),
         json!(["N", "E"])
+    );
+}
+
+#[test]
+fn named_entry() {
+    assert_eq!(
+        NamedEntry {
+            name: "Entry".to_string(),
+            entry: "Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string()
+        }
+        .to_5etools_base(),
+        json!({
+            "name": "Entry",
+            "entries": [
+                "Attack {@hit 7} to hit. {@h}{@damage 2d4 - 3} acid damage."
+            ]
+        })
+    );
+
+    assert_eq!(
+        NamedEntry {
+            name: "Entry".to_string(),
+            entry: "Melee Weapon Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string()
+        }
+        .to_5etools_base(),
+        json!({
+            "name": "Entry",
+            "entries": [
+                "{@atk mw} {@hit 7} to hit. {@h}{@damage 2d4 - 3} acid damage."
+            ]
+        })
+    );
+
+    assert_eq!(
+        NamedEntry {
+            name: "Entry".to_string(),
+            entry: "Ranged Spell Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string()
+        }
+        .to_5etools_base(),
+        json!({
+            "name": "Entry",
+            "entries": [
+                "{@atk rs} {@hit 7} to hit. {@h}{@damage 2d4 - 3} acid damage."
+            ]
+        })
     );
 }
