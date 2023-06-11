@@ -19,8 +19,8 @@ impl To5etools for Description {
         use Description::{Entry, List};
         match self {
             Entry(entry) => {
-                // Capture e.g. "2d4" or "20d12"
-                let dice_capture = Regex::new(r"(?P<dice>\d+d\d+)").unwrap();
+                // Capture e.g. "2d4" or "20d12" or "5d6 + 10"
+                let dice_capture = Regex::new(r"(?P<dice>\d+d\d+(?: [\+-] \d+)?)").unwrap();
                 Value::String(
                     dice_capture
                         .replace_all(entry, "{@damage $dice}")
@@ -474,6 +474,51 @@ impl To5etools for Alignment {
             Unaligned => vec![json!("U")],
             OneAxis(axis) => vec![axis.to_5etools_base()],
             TwoAxes { order, moral } => vec![order.to_5etools_base(), moral.to_5etools_base()],
+        })
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NamedEntry {
+    pub name: String,
+    pub entry: String,
+}
+
+impl To5etools for NamedEntry {
+    fn to_5etools_base(&self) -> Value {
+        let attack_type_re =
+            Regex::new(r"^(?P<range>(?:Melee)|(?:Ranged)) (?P<type>(?:Weapon)|(?:Spell)) Attack")
+                .unwrap();
+        let attack_type = attack_type_re.captures(&self.entry).map_or_else(
+            || "".to_string(),
+            |capture| {
+                capture.get(0).map_or_else(
+                    || "".to_string(),
+                    |attack_type| {
+                        attack_type
+                            .as_str()
+                            .split(' ')
+                            .take(2)
+                            .map(|word| word.chars().next().unwrap().to_ascii_lowercase())
+                            .collect::<String>()
+                    },
+                )
+            },
+        );
+
+        let to_hit_re = Regex::new(r"\+(?P<to_hit>[0-9]+) to hit").unwrap();
+        let hit_re = Regex::new(r"\. (Hit: )").unwrap();
+        let dice_re = Regex::new(r"(?P<dice>\d+d\d+(?: [\+-] \d+)?)").unwrap();
+        let entry = attack_type_re.replace(&self.entry, format!("{{@atk {attack_type}}}"));
+        let entry = to_hit_re.replace(&entry, "{@hit $to_hit} to hit");
+        let entry = hit_re.replace(&entry, ". {@h}");
+        let entry = dice_re.replace_all(&entry, "{@damage $dice}");
+        json!({
+            "name": self.name,
+            "entries": [
+                entry,
+            ]
         })
     }
 }
