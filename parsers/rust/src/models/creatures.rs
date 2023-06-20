@@ -1,7 +1,11 @@
-use crate::utils::traits::To5etools;
+use std::collections::HashMap;
+
+use crate::utils::traits::{option_to_5etools_creature, To5etools};
 use serde_json::{json, Value};
 
-use super::common::{merge_json, DamageType};
+use super::common::{
+    merge_json, AbilityScore, Alignment, DamageType, NamedEntry, Skill, Source, StatusCondition,
+};
 
 #[cfg(test)]
 mod tests;
@@ -283,5 +287,115 @@ impl To5etools for ArmorClass {
                 }])
             },
         )
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChallengeRating {
+    WholeNumber(u8),
+    Half,
+    Quarter,
+    Eighth,
+}
+
+impl To5etools for ChallengeRating {
+    fn to_5etools_base(&self) -> Value {
+        use ChallengeRating::*;
+        Value::String(match self {
+            WholeNumber(number) => number.to_string(),
+            Half => "1/2".to_string(),
+            Quarter => "1/4".to_string(),
+            Eighth => "1/8".to_string(),
+        })
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Creature<'a> {
+    pub name: String,
+    pub source: Source<'a>,
+    pub size: Size,
+    pub creature_type: CreatureTypeEnum,
+    pub alignment: Alignment,
+    pub armor_class: ArmorClass,
+    pub hit_points: HitPoints,
+    pub speed: Speed,
+    pub ability_scores: AbilityScores,
+    pub saving_throws: Option<HashMap<AbilityScore, u8>>,
+    pub skills: Option<HashMap<Skill, i8>>,
+    pub senses: Option<Vec<String>>,
+    pub passive_perception: u8,
+    pub damage_resistance: Option<Vec<DamageModifier>>,
+    pub damage_immunity: Option<Vec<DamageModifier>>,
+    pub damage_vulnerability: Option<Vec<DamageModifier>>,
+    pub condition_immunities: Option<Vec<StatusCondition>>,
+    pub languages: Vec<String>,
+    pub challenge_rating: ChallengeRating,
+    pub abilities: Option<Vec<NamedEntry>>,
+    pub actions: Option<Vec<NamedEntry>>,
+    pub bonus_actions: Option<Vec<NamedEntry>>,
+    pub reactions: Option<Vec<NamedEntry>>,
+    pub legendary_actions: Option<Vec<NamedEntry>>,
+    pub mythic_actions: Option<Vec<NamedEntry>>,
+    pub mythic_header: Option<String>,
+}
+
+impl<'a> To5etools for Creature<'a> {
+    fn to_5etools_base(&self) -> Value {
+        let main_body = json!({
+            "name": self.name,
+            "size": [self.size.to_5etools_creature()],
+            "type": self.creature_type.to_5etools_creature(),
+            "alignment": self.alignment.to_5etools_creature(),
+            "ac": self.armor_class.to_5etools_creature(),
+            "hp": self.hit_points.to_5etools_creature(),
+            "speed": self.speed.to_5etools_creature(),
+            "passive": self.passive_perception,
+            "languages": self.languages,
+            "cr": self.challenge_rating.to_5etools_creature(),
+        });
+
+        let ability_scores = self.ability_scores.to_5etools_creature();
+        let source = self.source.to_5etools_creature();
+        let saving_throws = option_to_5etools_creature(self.saving_throws.as_ref(), "save");
+        let skills = option_to_5etools_creature(self.skills.as_ref(), "skill");
+        let senses = option_to_5etools_creature(self.senses.as_ref(), "senses");
+        let damage_resistance =
+            option_to_5etools_creature(self.damage_resistance.as_ref(), "resist");
+        let damage_immunity = option_to_5etools_creature(self.damage_immunity.as_ref(), "immune");
+        let damage_vulnerability =
+            option_to_5etools_creature(self.damage_vulnerability.as_ref(), "vulnerable");
+        let condition_immunities =
+            option_to_5etools_creature(self.condition_immunities.as_ref(), "conditionImmune");
+        let abilities = option_to_5etools_creature(self.abilities.as_ref(), "trait");
+        let actions = option_to_5etools_creature(self.actions.as_ref(), "action");
+        let bonus_actions = option_to_5etools_creature(self.bonus_actions.as_ref(), "bonus");
+        let reactions = option_to_5etools_creature(self.reactions.as_ref(), "reaction");
+        let legendary_actions =
+            option_to_5etools_creature(self.legendary_actions.as_ref(), "legendary");
+        let mythic_header = option_to_5etools_creature(self.mythic_header.as_ref(), "mythicHeader");
+        let mythic_actions = option_to_5etools_creature(self.mythic_actions.as_ref(), "mythic");
+
+        merge_json(vec![
+            source,
+            main_body,
+            ability_scores,
+            saving_throws,
+            skills,
+            senses,
+            damage_resistance,
+            damage_immunity,
+            damage_vulnerability,
+            condition_immunities,
+            abilities,
+            actions,
+            bonus_actions,
+            reactions,
+            legendary_actions,
+            mythic_header,
+            mythic_actions,
+        ])
     }
 }

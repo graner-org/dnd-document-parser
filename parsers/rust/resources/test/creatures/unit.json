@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "sources": [
+      {
+        "json": "",
+        "abbreviation": "test-source",
+        "full": "",
+        "authors": [""],
+        "convertedBy": [""],
+        "version": "1.0",
+        "url": "test_url",
+        "targetSchema": "1.0"
+      }
+    ],
+    "dateAdded": 0,
+    "dateLastModified": 0
+  },
+  "monster": [
+    {
+      "name": "test",
+      "source": "book",
+      "page": 0,
+      "size": ["M"],
+      "type": "beast",
+      "alignment": ["U"],
+      "ac": [10],
+      "hp": {
+        "average": 10,
+        "formula": "1d10 + 4"
+      },
+      "speed": { "walk": 30 },
+      "str": 10,
+      "dex": 10,
+      "con": 10,
+      "int": 10,
+      "wis": 10,
+      "cha": 10,
+      "passive": 10,
+      "languages": ["Common"],
+      "cr": "2",
+      "action": [
+        {
+          "name": "attack",
+          "entries": [
+            "{@atk mw}: {@hit 5} to hit, reach 5 ft. {@h}10 ({@damage 1d10 + 4}) slashing damage."
+          ]
+        }
+      ]
+    }
+  ]
+}

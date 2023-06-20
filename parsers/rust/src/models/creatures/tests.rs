@@ -1,15 +1,19 @@
-use serde_json::json;
+use std::{fs::File, io::BufReader};
+
+use serde_json::{json, Value};
 
 use crate::{
     models::{
-        common::DamageType,
+        common::{DamageType, NamedEntry, Source},
         creatures::{
             ArmorClass, ConditionalDamageModifier, CreatureType, CreatureTypeEnum, DamageModifier,
             DamageModifierType, FlySpeed, HitPoints, HitPointsFormula, Speed,
         },
     },
-    utils::traits::To5etools,
+    utils::{compare::json_compare, traits::To5etools},
 };
+
+use super::{Creature, Size};
 
 #[test]
 fn hit_points() {
@@ -160,4 +164,81 @@ fn armor_class() {
             }
         ])
     );
+}
+
+fn read_json_file(filename: String) -> Value {
+    let file = File::open(filename).unwrap();
+    let reader = BufReader::new(file);
+    serde_json::from_reader(reader).unwrap()
+}
+
+#[test]
+fn creature() {
+    let expected_json = read_json_file("resources/test/creatures/unit.json".to_string())
+        .get("monster")
+        .and_then(|array| array.get(0))
+        .unwrap()
+        .to_owned();
+
+    let creature = Creature {
+        name: "test".to_string(),
+        source: Source {
+            source_book: "book",
+            page: 0,
+        },
+        size: Size::Medium,
+        creature_type: CreatureTypeEnum::Beast,
+        alignment: crate::models::common::Alignment::Unaligned,
+        armor_class: ArmorClass {
+            ac: 10,
+            armor_type: None,
+        },
+        hit_points: HitPoints {
+            average: 10,
+            formula: HitPointsFormula {
+                number_of_dice: 1,
+                die_size: 10,
+                modifier: 4,
+            },
+        },
+        speed: Speed {
+            walk: 30,
+            burrow: None,
+            climb: None,
+            crawl: None,
+            fly: None,
+            swim: None,
+        },
+        ability_scores: super::AbilityScores {
+            strength: 10,
+            dexterity: 10,
+            constitution: 10,
+            intelligence: 10,
+            wisdom: 10,
+            charisma: 10,
+        },
+        saving_throws: None,
+        skills: None,
+        senses: None,
+        passive_perception: 10,
+        damage_resistance: None,
+        damage_immunity: None,
+        damage_vulnerability: None,
+        condition_immunities: None,
+        languages: vec!["Common".to_string()],
+        challenge_rating: super::ChallengeRating::WholeNumber(2),
+        abilities: None,
+        actions: Some(vec![NamedEntry {
+            name: "attack".to_string(),
+            entry:
+                "Melee Weapon Attack: +5 to hit, reach 5 ft. Hit: 10 (1d10 + 4) slashing damage."
+                    .to_string(),
+        }]),
+        bonus_actions: None,
+        reactions: None,
+        legendary_actions: None,
+        mythic_actions: None,
+        mythic_header: None,
+    };
+    json_compare(creature.to_5etools_creature(), expected_json).unwrap()
 }
