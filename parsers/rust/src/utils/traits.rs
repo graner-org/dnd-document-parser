@@ -69,7 +69,7 @@ macro_rules! impl_to5etools_number {
 impl_to5etools_string!(&str, String);
 impl_to5etools_number!(u8, u16, u32, i8, i16, i32);
 
-impl<T: To5etools + Copy> To5etools for Vec<T> {
+impl<T: To5etools> To5etools for Vec<T> {
     fn to_5etools_base(&self) -> Value {
         self.iter()
             .map(To5etools::to_5etools_base)
