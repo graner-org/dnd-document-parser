@@ -266,7 +266,7 @@ impl To5etools for StatusCondition {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AbilityScore {
     Strength,
     Dexterity,
@@ -294,7 +294,7 @@ impl To5etools for AbilityScore {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Skill {
     Acrobatics,
     AnimalHandling,
