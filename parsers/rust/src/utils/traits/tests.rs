@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
-use crate::{models::common::AbilityScore, utils::traits::To5etools};
+use crate::{
+    models::common::AbilityScore,
+    utils::traits::{option_to_5etools_base, To5etools},
+};
 
 #[test]
 fn to5etools_vec() {
@@ -29,4 +32,15 @@ fn to5etools_map() {
 fn to5etools_map_panic() {
     // Keys are only allowed to be strings
     HashMap::from([(5, 5), (3, 3)]).to_5etools_base();
+}
+
+#[test]
+fn to5etools_option() {
+    assert_eq!(
+        option_to_5etools_base(Some(&vec![1, 2, 3]), "key"),
+        json!({"key": [1,2,3]})
+    );
+
+    let option: Option<u8> = None;
+    assert_eq!(option_to_5etools_base(option.as_ref(), "key"), json!({}));
 }

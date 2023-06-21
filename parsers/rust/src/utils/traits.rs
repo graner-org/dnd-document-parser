@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde_json::Value;
+use serde_json::{json, Value};
 
 #[cfg(test)]
 mod tests;
@@ -13,6 +13,33 @@ pub trait To5etools {
     fn to_5etools_creature(&self) -> Value {
         self.to_5etools_base()
     }
+}
+
+pub fn option_to_5etools_base<T: To5etools, S: ToString>(maybe_value: Option<&T>, key: S) -> Value {
+    maybe_value.map_or_else(
+        || json!({}),
+        |value| json!({key.to_string(): value.to_5etools_base()}),
+    )
+}
+
+pub fn option_to_5etools_spell<T: To5etools, S: ToString>(
+    maybe_value: Option<&T>,
+    key: S,
+) -> Value {
+    maybe_value.map_or_else(
+        || json!({}),
+        |value| json!({key.to_string(): value.to_5etools_spell()}),
+    )
+}
+
+pub fn option_to_5etools_creature<T: To5etools, S: ToString>(
+    maybe_value: Option<&T>,
+    key: S,
+) -> Value {
+    maybe_value.map_or_else(
+        || json!({}),
+        |value| json!({key.to_string(): value.to_5etools_creature()}),
+    )
 }
 
 macro_rules! impl_to5etools_string {
