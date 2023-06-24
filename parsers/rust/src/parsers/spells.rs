@@ -486,8 +486,15 @@ fn parse_second_group(
 fn parse_first_group(
     #[allow(clippy::ptr_arg)] group: &Vec<&str>,
 ) -> Result<(Name, SpellLevel, MagicSchool, Ritual), Error> {
-    fn clean_name(raw_name: &&str) -> String {
-        raw_name.replace("#### ", "")
+    fn clean_name(raw_name: &&str) -> Result<String, ParseError> {
+        raw_name
+            .strip_prefix("#### ")
+            .map(ToString::to_string)
+            .ok_or_else(|| ParseError {
+                string: raw_name.to_owned().to_owned(),
+                parsing_step: "Name".to_owned(),
+                problem: Some("Name does not start with `#### `".to_owned()),
+            })
     }
     fn char_is_level(c: char) -> Option<SpellLevel> {
         c.to_digit(10).map(|level| level as u8)
@@ -500,7 +507,7 @@ fn parse_first_group(
             index: 0,
             parsing_step: "Name".to_owned(),
         })
-        .map(clean_name)?;
+        .map(clean_name)??;
     // The second line contains spell level and school, as well as whether the spell is a ritual.
     let level_and_school = strip_str(&group.get(1).ok_or(OutOfBoundsError {
         array: group.iter().map(|s| s.to_owned().to_owned()).collect_vec(),
@@ -608,7 +615,7 @@ impl TryFrom<&str> for RangeUnit {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use RangeUnit::{Feet, Miles};
         match value.to_lowercase().as_str() {
-            "foot" | "feet" => Ok(Feet),
+            "foot" | "feet" | "ft" => Ok(Feet),
             "mile" | "miles" => Ok(Miles),
             _ => Err(ParseError {
                 string: value.to_owned(),

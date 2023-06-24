@@ -37,15 +37,15 @@ struct Cli {
 }
 
 // TODO: Better error messages
-fn find_html_files(path: PathBuf) -> Result<Vec<PathBuf>, Error> {
+fn find_html_or_md_files(path: PathBuf) -> Result<Vec<PathBuf>, Error> {
     if path.is_file() {
         return match path.extension().and_then(std::ffi::OsStr::to_str) {
-            Some("html") => Ok(vec![path]),
+            Some("html") | Some("md") => Ok(vec![path]),
             _ => Ok(vec![]),
         };
     }
     fs::read_dir(path)?
-        .map_ok(|path| find_html_files(path.path()))
+        .map_ok(|path| find_html_or_md_files(path.path()))
         .flatten()
         .fold_ok(vec![], |acc, paths| [acc, paths].concat())
 }
@@ -86,7 +86,7 @@ fn parse_gm_binder_spells(sources: Vec<PathBuf>, source_book: Source) -> Vec<Res
 
 fn main() -> Result<(), Error> {
     let args = Cli::parse();
-    let sources = find_html_files(args.input_path)?;
+    let sources = find_html_or_md_files(args.input_path)?;
     let num_sources = sources.len();
     let meta_path = args.meta_path.clone();
     let meta = read_meta_file(args.meta_path)?;
