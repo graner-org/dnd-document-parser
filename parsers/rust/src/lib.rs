@@ -5,6 +5,7 @@
     clippy::expect_used
 )]
 pub mod parsers {
+    pub mod creatures;
     pub mod spells;
 }
 

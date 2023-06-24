@@ -174,7 +174,7 @@ fn read_json_file(filename: String) -> Value {
 
 #[test]
 fn creature() {
-    let expected_json = read_json_file("resources/test/creatures/unit.json".to_string())
+    let expected_json = read_json_file("resources/test/creatures/unit_output.json".to_string())
         .get("monster")
         .and_then(|array| array.get(0))
         .unwrap()
