@@ -79,6 +79,15 @@ fn alignment_test() {
         .to_5etools_creature(),
         json!(["N", "E"])
     );
+
+    assert_eq!(
+        TwoAxes {
+            moral: AlignmentAxisMoral::Neutral,
+            order: AlignmentAxisOrder::Neutral,
+        }
+        .to_5etools_creature(),
+        json!(["N"])
+    );
 }
 
 #[test]
