@@ -150,21 +150,13 @@ pub struct Speed {
 
 impl To5etools for Speed {
     fn to_5etools_base(&self) -> Value {
-        let empty_json = json!({});
         merge_json(vec![
             json!({"walk": self.walk}),
-            self.burrow
-                .map_or_else(|| empty_json.clone(), |speed| json!({ "burrow": speed })),
-            self.climb
-                .map_or_else(|| empty_json.clone(), |speed| json!({ "climb": speed })),
-            self.crawl
-                .map_or_else(|| empty_json.clone(), |speed| json!({ "crawl": speed })),
-            self.fly.as_ref().map_or_else(
-                || empty_json.clone(),
-                |fly_speed| json!({ "fly": fly_speed.to_5etools_base() }),
-            ),
-            self.swim
-                .map_or_else(|| empty_json.clone(), |speed| json!({ "swim": speed })),
+            option_to_5etools_creature(self.burrow.as_ref(), "burrow"),
+            option_to_5etools_creature(self.climb.as_ref(), "climb"),
+            option_to_5etools_creature(self.crawl.as_ref(), "crawl"),
+            option_to_5etools_creature(self.fly.as_ref(), "fly"),
+            option_to_5etools_creature(self.swim.as_ref(), "swim"),
         ])
     }
 }
@@ -257,15 +249,13 @@ pub struct CreatureType {
 
 impl To5etools for CreatureType {
     fn to_5etools_base(&self) -> Value {
-        self.subtypes.as_ref().map_or_else(
-            || self.main_type.to_5etools_base(),
-            |subtypes| {
-                json!({
-                    "type": self.main_type.to_5etools_base(),
-                    "tags": subtypes,
-                })
-            },
-        )
+        match &self.subtypes {
+            None => self.main_type.to_5etools_base(),
+            Some(subtypes) => json!({
+                "type": self.main_type.to_5etools_base(),
+                "tags": subtypes,
+            }),
+        }
     }
 }
 
@@ -273,20 +263,18 @@ impl To5etools for CreatureType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArmorClass {
     pub ac: u8,
-    pub armor_type: Option<String>,
+    pub armor_type: Option<Vec<String>>,
 }
 
 impl To5etools for ArmorClass {
     fn to_5etools_base(&self) -> Value {
-        self.armor_type.as_ref().map_or_else(
-            || json!([self.ac]),
-            |armor_type| {
-                json!([{
+        match &self.armor_type {
+            None => json!([self.ac]),
+            Some(armor) => json!([{
                     "ac": self.ac,
-                    "from": [armor_type],
-                }])
-            },
-        )
+                    "from": armor,
+            }]),
+        }
     }
 }
 

@@ -154,7 +154,7 @@ fn armor_class() {
     assert_eq!(
         ArmorClass {
             ac: 10,
-            armor_type: Some("Natural Armor".to_string())
+            armor_type: Some(vec!["Natural Armor".to_string()])
         }
         .to_5etools_base(),
         json!([
