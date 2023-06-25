@@ -34,6 +34,7 @@ pub struct OutOfBoundsError {
     pub array: Vec<String>,
     pub index: u32,
     pub parsing_step: String,
+    pub problem: Option<String>,
 }
 
 #[derive(Debug)]

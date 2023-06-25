@@ -473,6 +473,10 @@ impl To5etools for Alignment {
             Any => vec![json!("A")],
             Unaligned => vec![json!("U")],
             OneAxis(axis) => vec![axis.to_5etools_base()],
+            TwoAxes {
+                order: AlignmentAxisOrder::Neutral,
+                moral: AlignmentAxisMoral::Neutral,
+            } => vec![json!("N")],
             TwoAxes { order, moral } => vec![order.to_5etools_base(), moral.to_5etools_base()],
         })
     }
