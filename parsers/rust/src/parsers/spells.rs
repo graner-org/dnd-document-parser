@@ -23,6 +23,7 @@ type Entries = Vec<Description>;
 type AtHigherLevels = Option<String>;
 
 pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell, Error> {
+    // TODO: Allow classes to be defined in a table instead.
     let spell_groups: Vec<Vec<&str>> = split_spell_into_groups(source_file.as_str());
     let out_of_bounds_error = |index, parsing_step| OutOfBoundsError {
         array: spell_groups
@@ -32,6 +33,7 @@ pub fn parse_gm_binder(source_file: String, source_book: Source) -> Result<Spell
             .collect_vec(),
         index,
         parsing_step,
+        problem: None,
     };
     let mut spell_groups_iter = spell_groups.iter();
     let (name, level, school, ritual) = spell_groups_iter
@@ -64,6 +66,7 @@ fn split_spell_into_groups(spell: &str) -> Vec<Vec<&str>> {
     // Exclude lines that are empty or start with `<`, indicating an HTML tag.
     let excluder = Regex::new(r"^($|<)").unwrap();
     // String that divides groups such as name + level + school, entries, etc.
+    // TODO: Allow some dividers to be empty lines instead.
     let divider = "___";
     spell
         .split('\n')
@@ -93,6 +96,7 @@ fn parse_casting_time(casting_time_str: &str) -> Result<CastingTime, Error> {
             .collect_vec(),
         index,
         parsing_step: parsing_step.to_owned(),
+        problem: None,
     };
     let number: u8 = words
         .next()
@@ -141,6 +145,7 @@ fn parse_range(range_str: &str) -> Result<Range, Error> {
                         array: range_str.split(' ').map_into().collect_vec(),
                         index: 2,
                         parsing_step: "Range (self): unit".to_owned(),
+                        problem: None,
                     })?
                     .try_into()?,
                 type_: words
@@ -149,6 +154,7 @@ fn parse_range(range_str: &str) -> Result<Range, Error> {
                         array: range_str.split(' ').map_into().collect_vec(),
                         index: 3,
                         parsing_step: "Range (self): type".to_owned(),
+                        problem: None,
                     })?
                     .try_into()?,
             }),
@@ -167,6 +173,7 @@ fn parse_range(range_str: &str) -> Result<Range, Error> {
                     array: range_str.split(' ').map_into().collect_vec(),
                     index: 2,
                     parsing_step: "Range (point): unit".to_owned(),
+                    problem: None,
                 })?
                 .try_into()?,
             type_: TargetType::Point,
@@ -175,6 +182,7 @@ fn parse_range(range_str: &str) -> Result<Range, Error> {
             array: range_str.split(' ').map_into().collect_vec(),
             index: 0,
             parsing_step: "Range".to_owned(),
+            problem: None,
         }
         .into()),
     }
@@ -254,6 +262,7 @@ fn _parse_components_helper(
                                 .expect("A parsable u32 was found above."),
                             array,
                             parsing_step: "Components (material): currency".to_owned(),
+                            problem: None,
                         }
                     })?
                     .try_into()?;
@@ -293,6 +302,7 @@ fn parse_duration(duration_str: String) -> Result<Duration, Error> {
                 .expect("A parsable u8 was found above."),
             array,
             parsing_step: parsing_step.to_owned(),
+            problem: None,
         }
     };
     match words.next() {
@@ -457,6 +467,7 @@ fn parse_second_group(
         array: group_stripped.clone(),
         index,
         parsing_step: parsing_step.to_owned(),
+        problem: None,
     };
     let casting_time: CastingTime = group_stripped
         .get(0)
@@ -506,6 +517,7 @@ fn parse_first_group(
             array: group.iter().map(|s| s.to_owned().to_owned()).collect_vec(),
             index: 0,
             parsing_step: "Name".to_owned(),
+            problem: None,
         })
         .map(clean_name)??;
     // The second line contains spell level and school, as well as whether the spell is a ritual.
@@ -513,6 +525,7 @@ fn parse_first_group(
         array: group.iter().map(|s| s.to_owned().to_owned()).collect_vec(),
         index: 1,
         parsing_step: "Level and School".to_owned(),
+        problem: None,
     })?);
 
     let school: MagicSchool = level_and_school
