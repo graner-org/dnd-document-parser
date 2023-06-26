@@ -87,7 +87,7 @@ impl To5etools for CreatureTypeEnum {
 pub struct HitPointsFormula {
     pub number_of_dice: u8,
     pub die_size: u8,
-    pub modifier: u16,
+    pub modifier: i16,
 }
 
 impl To5etools for HitPointsFormula {

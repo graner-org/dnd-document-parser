@@ -1,11 +1,16 @@
+use std::collections::HashMap;
+
 use itertools::Itertools;
 
 use crate::{
     models::{
         common::{Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder},
-        creatures::{CreatureType, CreatureTypeEnum, Size},
+        creatures::{
+            ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints, HitPointsFormula,
+            Size, Speed,
+        },
     },
-    utils::error::{Error, OutOfBoundsError, ParseError},
+    utils::error::{Error, OutOfBoundsError, ParseError, Result},
 };
 
 type Name = String;
@@ -38,15 +43,31 @@ fn extract_stat_blocks(document: String) -> Vec<Vec<String>> {
         .collect_vec()
 }
 
-fn parse_first_group(
-    first_group: Vec<String>,
-) -> Result<(Name, Size, CreatureType, Alignment), Error> {
-    fn clean_name(name: &String) -> Result<Name, ParseError> {
+fn clean_stat_block_line(line: &str) -> Result<&str> {
+    line.rsplit_once("**")
+        .unzip()
+        .1
+        .map(str::trim)
+        .ok_or_else(|| {
+            ParseError {
+                string: line.to_string(),
+                parsing_step: "Removing `**<line type def>**`".to_string(),
+                problem: None,
+            }
+            .into()
+        })
+}
+
+fn parse_first_group(first_group: Vec<String>) -> Result<(Name, Size, CreatureType, Alignment)> {
+    fn clean_name(name: &String) -> Result<Name> {
         name.strip_prefix("## ")
-            .ok_or_else(|| ParseError {
-                string: name.to_string(),
-                parsing_step: "Name".to_string(),
-                problem: Some("Name line does not start with `## `".to_string()),
+            .ok_or_else(|| {
+                ParseError {
+                    string: name.to_string(),
+                    parsing_step: "Name".to_string(),
+                    problem: Some("Name line does not start with `## `".to_string()),
+                }
+                .into()
             })
             .map(ToString::to_string)
     }
@@ -88,9 +109,26 @@ fn parse_first_group(
     Ok((name, size, creature_type, alignment))
 }
 
+fn parse_second_group(second_group: Vec<String>) -> Result<(ArmorClass, HitPoints, Speed)> {
+    match &second_group[..] {
+        [ac_line, hp_line, speed_line] => Ok((
+            clean_stat_block_line(ac_line)?.try_into()?,
+            clean_stat_block_line(hp_line)?.try_into()?,
+            clean_stat_block_line(speed_line)?.try_into()?,
+        )),
+        _ => Err(OutOfBoundsError {
+            array: second_group.clone(),
+            index: second_group.len() as u32,
+            parsing_step: "Second group parsing".to_string(),
+            problem: Some("Expected array of length 3".to_string()),
+        }
+        .into()),
+    }
+}
+
 impl TryFrom<&str> for Size {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use Size::*;
         match value {
             "tiny" => Ok(Tiny),
@@ -103,14 +141,15 @@ impl TryFrom<&str> for Size {
                 string: value.to_string(),
                 parsing_step: "Size".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for CreatureTypeEnum {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use CreatureTypeEnum::*;
         match value {
             "aberration" => Ok(Aberration),
@@ -131,14 +170,15 @@ impl TryFrom<&str> for CreatureTypeEnum {
                 string: value.to_string(),
                 parsing_step: "Main creature type".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for CreatureType {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         match value.replace('/', " ").splitn(2, ' ').collect_vec()[..] {
             [main_type] => Ok(CreatureType {
                 main_type: main_type.try_into()?,
@@ -159,14 +199,15 @@ impl TryFrom<&str> for CreatureType {
                 string: value.to_string(),
                 parsing_step: "Creature type".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for AlignmentAxisMoral {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use AlignmentAxisMoral::{Evil, Good, Neutral};
         match value {
             "good" => Ok(Good),
@@ -176,14 +217,15 @@ impl TryFrom<&str> for AlignmentAxisMoral {
                 string: value.to_string(),
                 parsing_step: "AlignmentAxisMoral".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for AlignmentAxisOrder {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use AlignmentAxisOrder::{Chaotic, Lawful, Neutral};
         match value {
             "lawful" => Ok(Lawful),
@@ -193,14 +235,15 @@ impl TryFrom<&str> for AlignmentAxisOrder {
                 string: value.to_string(),
                 parsing_step: "AlignmentAxisOrder".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for AlignmentAxis {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use AlignmentAxis::{Moral, Order};
         value
             .try_into()
@@ -210,8 +253,8 @@ impl TryFrom<&str> for AlignmentAxis {
 }
 
 impl TryFrom<&str> for Alignment {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         match value
             .splitn(3, ' ')
             .filter(|word| !word.contains("alignment"))
@@ -232,7 +275,243 @@ impl TryFrom<&str> for Alignment {
                 string: value.to_string(),
                 parsing_step: "Alignment".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
+    }
+}
+
+impl TryFrom<&str> for ArmorClass {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
+        let error = |problem: &str| -> ParseError {
+            ParseError {
+                string: value.to_string(),
+                parsing_step: "Armor class".to_string(),
+                problem: Some(problem.to_string()),
+            }
+        };
+
+        value.split_once(' ').map_or_else(
+            // No whitespace found, assume everything is AC.
+            || {
+                Ok(Self {
+                    ac: value.parse().map_err(|_| error("Could not parse as u8"))?,
+                    armor_type: None,
+                })
+            },
+            // Whitespace found, so there is both AC and armor type.
+            |(ac, armor_types)| {
+                Ok(Self {
+                    ac: ac.parse().map_err(|_| error("Could not parse AC as u8"))?,
+                    armor_type: armor_types
+                        .strip_prefix('(')
+                        .ok_or_else(|| error("No leading `(` found for armor type"))?
+                        .strip_suffix(')')
+                        .ok_or_else(|| error("No trailing `)` found for armor type"))
+                        .map(|armor_types| {
+                            Some(
+                                armor_types
+                                    .split(", ")
+                                    .map(ToString::to_string)
+                                    .collect_vec(),
+                            )
+                        })?,
+                })
+            },
+        )
+    }
+}
+
+impl TryFrom<&str> for HitPointsFormula {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
+        let error = |problem: &str| -> ParseError {
+            ParseError {
+                string: value.to_string(),
+                parsing_step: "Hit Points Formula".to_string(),
+                problem: Some(problem.to_string()),
+            }
+        };
+
+        let parse_dice = |die_formula: &str| -> Result<(u8, u8)> {
+            die_formula
+                .split_once('d')
+                .ok_or_else(|| error("No `d` found in die formula"))
+                .map(|(number_of_dice, die_size)| {
+                    Ok((
+                        number_of_dice
+                            .parse()
+                            .map_err(|_| error("Number of dice could not be parsed as u8"))?,
+                        die_size
+                            .parse()
+                            .map_err(|_| error("Die size could not be parsed as u8"))?,
+                    ))
+                })?
+        };
+
+        value
+            .strip_prefix('(')
+            .ok_or_else(|| error("No leading `(` found for hit points formula"))?
+            .strip_suffix(')')
+            .ok_or_else(|| error("No trailing `)` found for hit points formula"))
+            .map(|formula| {
+                formula
+                    .split_once('+')
+                    .or_else(|| formula.split_once('-'))
+                    .map_or_else(
+                        || {
+                            let (number_of_dice, die_size) = parse_dice(formula)?;
+                            Ok(Self {
+                                number_of_dice,
+                                die_size,
+                                modifier: 0,
+                            })
+                        },
+                        |(die_formula, modifier)| {
+                            let (number_of_dice, die_size) = parse_dice(die_formula.trim())?;
+                            let modifier: i16 = modifier
+                                .trim()
+                                .parse()
+                                .map_err(|_| error("Modifier could not be parsed as u8"))?;
+                            Ok(Self {
+                                number_of_dice,
+                                die_size,
+                                modifier: if formula.contains('+') {
+                                    modifier
+                                } else {
+                                    -modifier
+                                },
+                            })
+                        },
+                    )
+            })?
+    }
+}
+
+impl TryFrom<&str> for HitPoints {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
+        let error = |problem: &str| -> ParseError {
+            ParseError {
+                string: value.to_string(),
+                parsing_step: "Hit Points".to_string(),
+                problem: Some(problem.to_string()),
+            }
+        };
+
+        value
+            .split_once(' ')
+            .ok_or_else(|| error("No separating ` ` found"))
+            .map(|(average, formula)| {
+                Ok(Self {
+                    average: average
+                        .parse()
+                        .map_err(|_| error("Could not parse average as u16"))?,
+                    formula: formula.try_into()?,
+                })
+            })?
+    }
+}
+
+impl TryFrom<&str> for Speed {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
+        let cleaned_speeds = value.replace(" ft.", "");
+        let mut speeds = cleaned_speeds.split(", ").map(str::trim).into_iter();
+        let walk = speeds
+            .next()
+            .ok_or_else(|| OutOfBoundsError {
+                array: value
+                    .replace(" ft.", "")
+                    .split(", ")
+                    .map(ToString::to_string)
+                    .collect_vec(),
+                index: 0,
+                parsing_step: "Speed".to_string(),
+                problem: None,
+            })?
+            .parse()
+            .map_err(|_| ParseError {
+                string: value.to_string(),
+                parsing_step: "Walking speed".to_string(),
+                problem: None,
+            })?;
+
+        let mut speed_map = speeds
+            .map(|speed| {
+                speed.split_once(' ').ok_or_else(|| {
+                    ParseError {
+                        string: speed.to_string(),
+                        parsing_step: "Speed types".to_string(),
+                        problem: Some("No separating ` ` found".to_string()),
+                    }
+                    .into()
+                })
+            })
+            .collect::<Result<HashMap<&str, &str>>>()?;
+
+        let mut pop_speed = |speed_type: &str| -> Result<Option<u16>> {
+            speed_map
+                .remove(speed_type)
+                .map(|speed| {
+                    speed.trim().parse().map_err(|_| {
+                        ParseError {
+                            string: speed.to_string(),
+                            parsing_step: format!("{speed_type} speed"),
+                            problem: Some("Could not parse as u16".to_string()),
+                        }
+                        .into()
+                    })
+                })
+                .transpose()
+        };
+
+        let fly = pop_speed("fly").map_or_else(
+            |err| {
+                if let Error::Parse(ParseError { string, .. }) = &err {
+                    if let Some((speed, hover)) = string.split_once(' ') {
+                        if hover.contains("hover") {
+                            Ok(Some(FlySpeed {
+                                speed: speed.parse().map_err(|_| ParseError {
+                                    string: speed.to_string(),
+                                    parsing_step: "flying speed".to_string(),
+                                    problem: Some("Could not parse as u16".to_string()),
+                                })?,
+                                hover: true,
+                            }))
+                        } else {
+                            Err(ParseError {
+                                string: string.clone(),
+                                parsing_step: "flying speed".to_string(),
+                                problem: Some("Multiple words with no `hover`".to_string()),
+                            }
+                            .into())
+                        }
+                    } else {
+                        Err(err)
+                    }
+                } else {
+                    Err(err)
+                }
+            },
+            |maybe_speed| {
+                Ok(maybe_speed.map(|speed| FlySpeed {
+                    speed,
+                    hover: false,
+                }))
+            },
+        )?;
+
+        let speed = Self {
+            walk,
+            burrow: pop_speed("burrow")?,
+            climb: pop_speed("climb")?,
+            crawl: pop_speed("crawl")?,
+            fly,
+            swim: pop_speed("swim")?,
+        };
+
+        Ok(speed)
     }
 }
