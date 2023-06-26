@@ -45,6 +45,8 @@ pub enum Error {
     Parse(ParseError),
 }
 
+pub type Result<T> = std::result::Result<T, Error>;
+
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
         use Error::{OutOfBounds, Parse};

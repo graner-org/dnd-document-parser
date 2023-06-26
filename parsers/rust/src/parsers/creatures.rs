@@ -3,9 +3,9 @@ use itertools::Itertools;
 use crate::{
     models::{
         common::{Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder},
-        creatures::{CreatureType, CreatureTypeEnum, Size},
+        creatures::{ArmorClass, CreatureType, CreatureTypeEnum, HitPoints, Size, Speed},
     },
-    utils::error::{Error, OutOfBoundsError, ParseError},
+    utils::error::{Error, OutOfBoundsError, ParseError, Result},
 };
 
 type Name = String;
@@ -38,15 +38,16 @@ fn extract_stat_blocks(document: String) -> Vec<Vec<String>> {
         .collect_vec()
 }
 
-fn parse_first_group(
-    first_group: Vec<String>,
-) -> Result<(Name, Size, CreatureType, Alignment), Error> {
-    fn clean_name(name: &String) -> Result<Name, ParseError> {
+fn parse_first_group(first_group: Vec<String>) -> Result<(Name, Size, CreatureType, Alignment)> {
+    fn clean_name(name: &String) -> Result<Name> {
         name.strip_prefix("## ")
-            .ok_or_else(|| ParseError {
-                string: name.to_string(),
-                parsing_step: "Name".to_string(),
-                problem: Some("Name line does not start with `## `".to_string()),
+            .ok_or_else(|| {
+                ParseError {
+                    string: name.to_string(),
+                    parsing_step: "Name".to_string(),
+                    problem: Some("Name line does not start with `## `".to_string()),
+                }
+                .into()
             })
             .map(ToString::to_string)
     }
@@ -89,8 +90,8 @@ fn parse_first_group(
 }
 
 impl TryFrom<&str> for Size {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use Size::*;
         match value {
             "tiny" => Ok(Tiny),
@@ -103,14 +104,15 @@ impl TryFrom<&str> for Size {
                 string: value.to_string(),
                 parsing_step: "Size".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for CreatureTypeEnum {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use CreatureTypeEnum::*;
         match value {
             "aberration" => Ok(Aberration),
@@ -131,14 +133,15 @@ impl TryFrom<&str> for CreatureTypeEnum {
                 string: value.to_string(),
                 parsing_step: "Main creature type".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for CreatureType {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         match value.replace('/', " ").splitn(2, ' ').collect_vec()[..] {
             [main_type] => Ok(CreatureType {
                 main_type: main_type.try_into()?,
@@ -159,14 +162,15 @@ impl TryFrom<&str> for CreatureType {
                 string: value.to_string(),
                 parsing_step: "Creature type".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for AlignmentAxisMoral {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use AlignmentAxisMoral::{Evil, Good, Neutral};
         match value {
             "good" => Ok(Good),
@@ -176,14 +180,15 @@ impl TryFrom<&str> for AlignmentAxisMoral {
                 string: value.to_string(),
                 parsing_step: "AlignmentAxisMoral".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for AlignmentAxisOrder {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use AlignmentAxisOrder::{Chaotic, Lawful, Neutral};
         match value {
             "lawful" => Ok(Lawful),
@@ -193,14 +198,15 @@ impl TryFrom<&str> for AlignmentAxisOrder {
                 string: value.to_string(),
                 parsing_step: "AlignmentAxisOrder".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
 
 impl TryFrom<&str> for AlignmentAxis {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         use AlignmentAxis::{Moral, Order};
         value
             .try_into()
@@ -210,8 +216,8 @@ impl TryFrom<&str> for AlignmentAxis {
 }
 
 impl TryFrom<&str> for Alignment {
-    type Error = ParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    type Error = Error;
+    fn try_from(value: &str) -> Result<Self> {
         match value
             .splitn(3, ' ')
             .filter(|word| !word.contains("alignment"))
@@ -232,7 +238,8 @@ impl TryFrom<&str> for Alignment {
                 string: value.to_string(),
                 parsing_step: "Alignment".to_string(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }
