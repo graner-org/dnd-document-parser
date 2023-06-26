@@ -7,9 +7,12 @@ use std::{
 use crate::{
     models::{
         common::{Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder},
-        creatures::{CreatureType, CreatureTypeEnum, Size},
+        creatures::{
+            ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints, HitPointsFormula,
+            Size, Speed,
+        },
     },
-    parsers::creatures::{extract_stat_blocks, parse_first_group},
+    parsers::creatures::{extract_stat_blocks, parse_first_group, parse_second_group},
 };
 
 #[test]
@@ -56,6 +59,39 @@ fn parse_first_group_test() {
         "With multiple lines".to_string()
     ])
     .is_err());
+}
+
+#[test]
+fn parse_second_group_test() {
+    assert_eq!(
+        parse_second_group(vec![
+            "- **Armor Class** 10".to_string(),
+            "- **Hit Points** 10 (1d10 + 4)".to_string(),
+            "- **Speed** 30 ft.".to_string(),
+        ]),
+        Ok((
+            ArmorClass {
+                ac: 10,
+                armor_type: None,
+            },
+            HitPoints {
+                average: 10,
+                formula: HitPointsFormula {
+                    number_of_dice: 1,
+                    die_size: 10,
+                    modifier: 4,
+                },
+            },
+            Speed {
+                walk: 30,
+                burrow: None,
+                climb: None,
+                crawl: None,
+                fly: None,
+                swim: None,
+            }
+        ))
+    )
 }
 
 #[test]
@@ -116,4 +152,105 @@ fn alignment() {
             moral: AlignmentAxisMoral::Neutral,
         })
     )
+}
+
+#[test]
+fn armor_class() {
+    assert_eq!(
+        "10".try_into(),
+        Ok(ArmorClass {
+            ac: 10,
+            armor_type: None,
+        })
+    );
+
+    assert_eq!(
+        "10 (Natural Armor, Shield)".try_into(),
+        Ok(ArmorClass {
+            ac: 10,
+            armor_type: Some(vec!["Natural Armor".to_string(), "Shield".to_string()]),
+        })
+    );
+}
+
+#[test]
+fn hit_points() {
+    assert_eq!(
+        "10 (1d10 + 4)".try_into(),
+        Ok(HitPoints {
+            average: 10,
+            formula: HitPointsFormula {
+                number_of_dice: 1,
+                die_size: 10,
+                modifier: 4,
+            }
+        })
+    );
+
+    assert_eq!(
+        "2 (1d10-4)".try_into(),
+        Ok(HitPoints {
+            average: 2,
+            formula: HitPointsFormula {
+                number_of_dice: 1,
+                die_size: 10,
+                modifier: -4,
+            }
+        })
+    );
+
+    assert_eq!(
+        "6 (1d10)".try_into(),
+        Ok(HitPoints {
+            average: 6,
+            formula: HitPointsFormula {
+                number_of_dice: 1,
+                die_size: 10,
+                modifier: 0,
+            }
+        })
+    );
+}
+
+#[test]
+fn speed() {
+    assert_eq!(
+        "30 ft.".try_into(),
+        Ok(Speed {
+            walk: 30,
+            burrow: None,
+            climb: None,
+            crawl: None,
+            fly: None,
+            swim: None,
+        })
+    );
+
+    assert_eq!(
+        "30 ft., climb 30 ft., burrow 30 ft.".try_into(),
+        Ok(Speed {
+            walk: 30,
+            burrow: Some(30),
+            climb: Some(30),
+            crawl: None,
+            fly: None,
+            swim: None,
+        })
+    );
+
+    assert_eq!(
+        "30 ft., burrow 30 ft., climb 30 ft., crawl 30 ft., fly 30 ft. (hover), swim 30 ft."
+            .try_into(),
+        Ok(Speed {
+            walk: 30,
+            burrow: Some(30),
+            climb: Some(30),
+            crawl: Some(30),
+            fly: Some(FlySpeed {
+                speed: 30,
+                hover: true,
+            }),
+            swim: Some(30),
+        })
+    );
 }
