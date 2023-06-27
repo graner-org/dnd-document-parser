@@ -706,7 +706,7 @@ impl TryFrom<&str> for Classes {
 }
 
 impl TryFrom<&str> for DamageType {
-    type Error = ParseError;
+    type Error = Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         use DamageType::{
             Acid, Bludgeoning, Cold, Fire, Force, Lightning, Necrotic, Piercing, Poison, Psychic,
@@ -730,7 +730,8 @@ impl TryFrom<&str> for DamageType {
                 string: value.to_owned(),
                 parsing_step: "DamageType".to_owned(),
                 problem: None,
-            }),
+            }
+            .into()),
         }
     }
 }

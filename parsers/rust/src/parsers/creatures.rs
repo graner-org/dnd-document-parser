@@ -1,17 +1,19 @@
-use std::{collections::HashMap, ops::Deref};
+use std::collections::HashMap;
 
 use itertools::Itertools;
 
 use crate::{
     models::{
         common::{
-            AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder, Skill,
-            StatusCondition,
+            AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder,
+            DamageType, Skill, StatusCondition,
         },
         creatures::{
-            AbilityScores, ArmorClass, ChallengeRating, CreatureType, CreatureTypeEnum,
-            DamageModifier, DamageModifierType, FlySpeed, HitPoints, HitPointsFormula, Size, Speed,
+            AbilityScores, ArmorClass, ChallengeRating, ConditionalDamageModifier, CreatureType,
+            CreatureTypeEnum, DamageModifier, DamageModifierType, FlySpeed, HitPoints,
+            HitPointsFormula, Size, Speed,
         },
+        spells,
     },
     utils::error::{Error, OutOfBoundsError, ParseError, Result},
 };
@@ -266,7 +268,96 @@ fn parse_damage_modifier(
     modifier_type: DamageModifierType,
     damage_modifier_line: &str,
 ) -> Result<Vec<DamageModifier>> {
-    todo!()
+    use DamageModifier::{Conditional, Unconditional};
+
+    let parse_conditional = |conditional: &str| -> Result<ConditionalDamageModifier> {
+        let conditional_and_removed = conditional.replacen("and ", "", 1);
+        let (conditional_damage_types, condition): (Vec<DamageType>, String) = {
+            if conditional_and_removed.contains(", ") {
+                let (damage_types_str, condition_with_last_type) =
+                    conditional_and_removed.rsplit_once(", ").ok_or_else(|| {
+                        ParseError::new_with_problem(
+                            conditional_and_removed.as_str(),
+                            "Damage modifier",
+                            "No `, ` found",
+                        )
+                    })?;
+
+                let (last_damage_type, condition) =
+                    condition_with_last_type.split_once(" ").ok_or_else(|| {
+                        ParseError::new_with_problem(
+                            condition_with_last_type,
+                            "Damage modifier",
+                            "Conditional without condition",
+                        )
+                    })?;
+
+                let damage_types: Vec<DamageType> = damage_types_str
+                    .split(", ")
+                    .chain([last_damage_type])
+                    .map(str::trim)
+                    .map(DamageType::try_from)
+                    .try_collect()?;
+
+                Ok((damage_types, condition.to_string()))
+            } else {
+                conditional_and_removed
+                    .split_once(' ')
+                    .map(
+                        |(damage_type, condition)| -> Result<(Vec<DamageType>, String)> {
+                            Ok((vec![damage_type.try_into()?], condition.to_string()))
+                        },
+                    )
+                    .ok_or_else(|| {
+                        ParseError::new_with_problem(
+                            conditional,
+                            "Damage modifier",
+                            "Condtional without condition",
+                        )
+                    })?
+            }
+        }?;
+
+        Ok(ConditionalDamageModifier {
+            modifier_type: modifier_type.clone(),
+            damage_types: conditional_damage_types,
+            condition,
+        })
+    };
+
+    match damage_modifier_line.to_lowercase().split(';').collect_vec()[..] {
+        [single_modifier_type] => {
+            if single_modifier_type.contains("from") || single_modifier_type.contains("attack") {
+                Ok(vec![Conditional(parse_conditional(single_modifier_type)?)])
+            } else {
+                single_modifier_type
+                    .split(", ")
+                    .map(str::trim)
+                    .map(DamageType::try_from)
+                    .map_ok(Unconditional)
+                    .try_collect()
+            }
+        }
+        [unconditional, conditional] => {
+            let unconditional_modifiers = unconditional
+                .split(", ")
+                .map(str::trim)
+                .map(DamageType::try_from)
+                .map_ok(Unconditional);
+
+            let conditional_modifiers = parse_conditional(conditional)?;
+
+            unconditional_modifiers
+                .chain([Ok(Conditional(conditional_modifiers))])
+                .try_collect()
+        }
+        _ => Err(ParseError::new_with_problem(
+            damage_modifier_line,
+            "Damage Modifier",
+            "More than 2 types of modifiers",
+        )
+        .into()),
+    }
 }
 
 fn parse_condition_immunities(condition_immunities_line: &str) -> Result<ConditionImmunities> {
@@ -754,7 +845,7 @@ impl TryFrom<&str> for Skill {
             "survival" => Ok(Survival),
             _ => Err(ParseError {
                 string: value.to_string(),
-                parsing_step: "Ability score".to_string(),
+                parsing_step: "Skill".to_string(),
                 problem: None,
             }
             .into()),
