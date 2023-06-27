@@ -1,19 +1,27 @@
 use std::{
     assert_eq,
+    collections::HashMap,
     fs::File,
     io::{read_to_string, BufReader},
 };
 
 use crate::{
     models::{
-        common::{Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder},
+        common::{
+            AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder,
+            DamageType, Skill, StatusCondition,
+        },
         creatures::{
-            AbilityScores, ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints,
+            AbilityScores, ArmorClass, ChallengeRating, ConditionalDamageModifier, CreatureType,
+            CreatureTypeEnum, DamageModifier, DamageModifierType, FlySpeed, HitPoints,
             HitPointsFormula, Size, Speed,
         },
     },
     parsers::creatures::{
-        extract_stat_blocks, parse_first_group, parse_second_group, parse_third_group,
+        extract_stat_blocks, parse_challenge_rating, parse_condition_immunities,
+        parse_damage_modifier, parse_first_group, parse_fourth_group, parse_languages,
+        parse_saving_throws, parse_second_group, parse_senses, parse_skills, parse_third_group,
+        SavingThrows, Skills,
     },
 };
 
@@ -113,6 +121,69 @@ fn parse_third_group_test() {
             charisma: 4,
         })
     )
+}
+
+#[test]
+fn parse_fourth_group_test() {
+    use AbilityScore::{Constitution, Wisdom};
+    use DamageModifier::{Conditional, Unconditional};
+    use DamageType::{Cold, Fire, Piercing};
+    use Skill::{Athletics, Perception};
+    use StatusCondition::{Charmed, Frightened};
+    let (saves, skills, damres, damimm, damvul, condimm, senses, passperc, langs, cr) =
+        match parse_fourth_group(vec![
+            "- **Saving Throws** CON +3, WIS +2".to_string(),
+            "- **Skills** Athletics +5, Perception +3".to_string(),
+            "- **Damage Resistances** Piercing from non-magical attacks".to_string(),
+            "- **Damage Immunities** Cold".to_string(),
+            "- **Damage Vulnerabilities** Fire".to_string(),
+            "- **Condition Immunities** Charmed, Frightened".to_string(),
+            "- **Senses** Passive Perception 15, blindsight 60 ft.".to_string(),
+            "- **Languages** Common, Giant".to_string(),
+            "- **Challenge** 16 (15,000 XP)".to_string(),
+        ]) {
+            Ok(ret) => ret,
+            Err(err) => panic!("{err:?}"),
+        };
+
+    assert_eq!(
+        saves,
+        Some(HashMap::from_iter(vec![
+            (Constitution, 3 as i8),
+            (Wisdom, 2 as i8),
+        ]))
+    );
+
+    assert_eq!(
+        skills,
+        Some(HashMap::from_iter(vec![
+            (Athletics, 5 as i8),
+            (Perception, 3 as i8),
+        ]))
+    );
+
+    assert_eq!(
+        damres,
+        Some(vec![Conditional(ConditionalDamageModifier {
+            modifier_type: DamageModifierType::Resistance,
+            damage_types: vec![Piercing],
+            condition: "from non-magical attacks".to_string(),
+        })]),
+    );
+
+    assert_eq!(damimm, Some(vec![Unconditional(Cold)]));
+
+    assert_eq!(damvul, Some(vec![Unconditional(Fire)]));
+
+    assert_eq!(condimm, Some(vec![Charmed, Frightened]),);
+
+    assert_eq!(senses, vec!["blindsight 60 ft.".to_string()],);
+
+    assert_eq!(passperc, 15);
+
+    assert_eq!(langs, vec!["Common".to_string(), "Giant".to_string()],);
+
+    assert_eq!(cr, ChallengeRating::WholeNumber(16),);
 }
 
 #[test]
@@ -274,4 +345,81 @@ fn speed() {
             swim: Some(30),
         })
     );
+}
+
+#[test]
+fn saving_throws() {
+    use AbilityScore::{Charisma, Strength};
+    assert_eq!(
+        parse_saving_throws("STR +3, CHA -2"),
+        Ok(HashMap::from([(Strength, 3), (Charisma, -2)]))
+    );
+}
+
+#[test]
+fn skills() {
+    use Skill::{Athletics, Perception};
+    assert_eq!(
+        parse_skills("Athletics +3, Perception -2"),
+        Ok(HashMap::from([(Athletics, 3), (Perception, -2)]))
+    );
+}
+
+#[test]
+fn damage_modifier() {
+    use DamageModifier::{Conditional, Unconditional};
+    use DamageModifierType::{Resistance, Vulnerability};
+    use DamageType::{Acid, Cold, Fire};
+
+    assert_eq!(
+        parse_damage_modifier(Resistance, "Fire, Cold"),
+        Ok(vec![Unconditional(Fire), Unconditional(Cold)]),
+    );
+
+    assert_eq!(
+        parse_damage_modifier(
+            Vulnerability,
+            "Fire; Cold, and Acid from non-magical attacks"
+        ),
+        Ok(vec![
+            Unconditional(Fire),
+            Conditional(ConditionalDamageModifier {
+                modifier_type: Vulnerability,
+                damage_types: vec![Cold, Acid],
+                condition: "from non-magical attacks".to_string(),
+            })
+        ])
+    )
+}
+
+#[test]
+fn condition_immunities() {
+    use StatusCondition::{Charmed, Frightened};
+    assert_eq!(
+        parse_condition_immunities("Charmed, frightened"),
+        Ok(vec![Charmed, Frightened])
+    )
+}
+
+#[test]
+fn senses() {
+    assert_eq!(
+        parse_senses("Darkvision 60 ft., Passive Perception 17"),
+        Ok((17, vec!["Darkvision 60 ft.".to_string()]))
+    )
+}
+
+#[test]
+fn languages() {
+    assert_eq!(
+        parse_languages("Common, Auran"),
+        Ok(vec!["Common".to_string(), "Auran".to_string()])
+    )
+}
+
+#[test]
+fn challenge_rating() {
+    use ChallengeRating::{Quarter, WholeNumber};
+    assert_eq!(parse_challenge_rating("11 (7,200 XP)"), Ok(WholeNumber(11)));
+    assert_eq!(parse_challenge_rating("1/4 (400 XP)"), Ok(Quarter));
 }

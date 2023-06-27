@@ -4,16 +4,28 @@ use itertools::Itertools;
 
 use crate::{
     models::{
-        common::{Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder},
+        common::{
+            AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder, Skill,
+            StatusCondition,
+        },
         creatures::{
-            AbilityScores, ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints,
-            HitPointsFormula, Size, Speed,
+            AbilityScores, ArmorClass, ChallengeRating, CreatureType, CreatureTypeEnum,
+            DamageModifier, DamageModifierType, FlySpeed, HitPoints, HitPointsFormula, Size, Speed,
         },
     },
     utils::error::{Error, OutOfBoundsError, ParseError, Result},
 };
 
 type Name = String;
+type SavingThrows = HashMap<AbilityScore, i8>;
+type Skills = HashMap<Skill, i8>;
+type DamageResistances = Vec<DamageModifier>;
+type DamageImmunities = Vec<DamageModifier>;
+type DamageVulnerabilities = Vec<DamageModifier>;
+type ConditionImmunities = Vec<StatusCondition>;
+type Senses = Vec<String>;
+type PassivePerception = u8;
+type Languages = Vec<String>;
 
 #[cfg(test)]
 mod tests;
@@ -187,6 +199,72 @@ fn parse_third_group(third_group: Vec<String>) -> Result<AbilityScores> {
         }
         .into()),
     }
+}
+
+fn parse_fourth_group(
+    fourth_group: Vec<String>,
+) -> Result<(
+    Option<SavingThrows>,
+    Option<Skills>,
+    Option<DamageResistances>,
+    Option<DamageImmunities>,
+    Option<DamageVulnerabilities>,
+    Option<ConditionImmunities>,
+    Senses,
+    PassivePerception,
+    Languages,
+    ChallengeRating,
+)> {
+    todo!()
+}
+
+fn parse_saving_throws(saving_throws_line: &str) -> Result<SavingThrows> {
+    saving_throws_line
+        .to_lowercase()
+        .split(", ")
+        .map(|save| {
+            if let Some((ability, save_mod)) = save.split_once(' ') {
+                Ok((
+                    ability.try_into()?,
+                    save_mod
+                        .parse::<i8>()
+                        .map_err(ParseError::from_intparse_error(
+                            save_mod.to_string(),
+                            "Saving_throws".to_string(),
+                        ))?,
+                ))
+            } else {
+                Err(ParseError::new(save, "Saving throws").into())
+            }
+        })
+        .collect()
+}
+
+fn parse_skills(skills_line: &str) -> Result<Skills> {
+    todo!()
+}
+
+fn parse_damage_modifier(
+    modifier_type: DamageModifierType,
+    damage_modifier_line: &str,
+) -> Result<Vec<DamageModifier>> {
+    todo!()
+}
+
+fn parse_condition_immunities(condition_immunities_line: &str) -> Result<ConditionImmunities> {
+    todo!()
+}
+
+fn parse_senses(senses_line: &str) -> Result<(PassivePerception, Senses)> {
+    todo!()
+}
+
+fn parse_languages(languages_line: &str) -> Result<Languages> {
+    todo!()
+}
+
+fn parse_challenge_rating(challenge_rating_line: &str) -> Result<ChallengeRating> {
+    todo!()
 }
 
 impl TryFrom<&str> for Size {
@@ -609,5 +687,26 @@ impl TryFrom<HashMap<&str, u8>> for AbilityScores {
             wisdom: get_score("wisdom")?,
             charisma: get_score("charisma")?,
         })
+    }
+}
+
+impl TryFrom<&str> for AbilityScore {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        use AbilityScore::*;
+        match value {
+            "str" => Ok(Strength),
+            "con" => Ok(Constitution),
+            "dex" => Ok(Dexterity),
+            "wis" => Ok(Wisdom),
+            "int" => Ok(Intelligence),
+            "cha" => Ok(Charisma),
+            _ => Err(ParseError {
+                string: value.to_string(),
+                parsing_step: "Ability score".to_string(),
+                problem: None,
+            }
+            .into()),
+        }
     }
 }
