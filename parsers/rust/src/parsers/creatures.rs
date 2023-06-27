@@ -241,7 +241,25 @@ fn parse_saving_throws(saving_throws_line: &str) -> Result<SavingThrows> {
 }
 
 fn parse_skills(skills_line: &str) -> Result<Skills> {
-    todo!()
+    skills_line
+        .to_lowercase()
+        .split(", ")
+        .map(|skill| {
+            if let Some((skill, skill_mod)) = skill.split_once(' ') {
+                Ok((
+                    skill.try_into()?,
+                    skill_mod
+                        .parse::<i8>()
+                        .map_err(ParseError::from_intparse_error(
+                            skill_mod.to_string(),
+                            "Skills".to_string(),
+                        ))?,
+                ))
+            } else {
+                Err(ParseError::new(skill, "Skills").into())
+            }
+        })
+        .collect()
 }
 
 fn parse_damage_modifier(
@@ -701,6 +719,39 @@ impl TryFrom<&str> for AbilityScore {
             "wis" => Ok(Wisdom),
             "int" => Ok(Intelligence),
             "cha" => Ok(Charisma),
+            _ => Err(ParseError {
+                string: value.to_string(),
+                parsing_step: "Ability score".to_string(),
+                problem: None,
+            }
+            .into()),
+        }
+    }
+}
+
+impl TryFrom<&str> for Skill {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        use Skill::*;
+        match value {
+            "acrobatics" => Ok(Acrobatics),
+            "animal handling" => Ok(AnimalHandling),
+            "arcana" => Ok(Arcana),
+            "athletics" => Ok(Athletics),
+            "deception" => Ok(Deception),
+            "history" => Ok(History),
+            "insight" => Ok(Insight),
+            "intimidation" => Ok(Intimidation),
+            "investigation" => Ok(Investigation),
+            "medicine" => Ok(Medicine),
+            "nature" => Ok(Nature),
+            "perception" => Ok(Perception),
+            "performance" => Ok(Performance),
+            "persuasion" => Ok(Persuasion),
+            "religion" => Ok(Religion),
+            "sleight of hand" => Ok(SleightOfHand),
+            "stealth" => Ok(Stealth),
+            "survival" => Ok(Survival),
             _ => Err(ParseError {
                 string: value.to_string(),
                 parsing_step: "Ability score".to_string(),
