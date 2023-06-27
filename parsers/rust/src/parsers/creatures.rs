@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use itertools::Itertools;
 
@@ -6,8 +6,8 @@ use crate::{
     models::{
         common::{Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder},
         creatures::{
-            ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints, HitPointsFormula,
-            Size, Speed,
+            AbilityScores, ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints,
+            HitPointsFormula, Size, Speed,
         },
     },
     utils::error::{Error, OutOfBoundsError, ParseError, Result},
@@ -120,6 +120,69 @@ fn parse_second_group(second_group: Vec<String>) -> Result<(ArmorClass, HitPoint
             array: second_group.clone(),
             index: second_group.len() as u32,
             parsing_step: "Second group parsing".to_string(),
+            problem: Some("Expected array of length 3".to_string()),
+        }
+        .into()),
+    }
+}
+
+fn parse_third_group(third_group: Vec<String>) -> Result<AbilityScores> {
+    fn strip_prefix_suffix(line: &String) -> Result<&str> {
+        line.strip_prefix('|')
+            .ok_or_else(|| ParseError {
+                string: line.clone(),
+                parsing_step: "Ability scores".to_string(),
+                problem: Some("No leading `|` found".to_string()),
+            })?
+            .strip_suffix('|')
+            .ok_or_else(|| {
+                ParseError {
+                    string: line.clone(),
+                    parsing_step: "Ability scores".to_string(),
+                    problem: Some("No trailing `|` found".to_string()),
+                }
+                .into()
+            })
+    }
+
+    match &third_group[..] {
+        [abilities_line, _, scores_line] => {
+            let stripped_abilites = strip_prefix_suffix(abilities_line)?.to_lowercase();
+            let abilities = stripped_abilites.split('|');
+            let scores = strip_prefix_suffix(scores_line)?.split('|').map(|score| {
+                score
+                    .split_once(' ')
+                    .unzip()
+                    .0
+                    .ok_or_else(|| ParseError {
+                        string: score.to_string(),
+                        parsing_step: "Ability scores".to_string(),
+                        problem: Some(
+                            "Score should be formatted as `<score> (<modifier>)`".to_string(),
+                        ),
+                    })?
+                    .parse::<u8>()
+                    .map_err(|_| {
+                        ParseError {
+                            string: score.to_string(),
+                            parsing_step: "Ability scores".to_string(),
+                            problem: Some("Score could not be parsed as u8".to_string()),
+                        }
+                        .into()
+                    })
+            });
+
+            abilities
+                .zip(scores)
+                // (&str, Result<u8>) -> Result<(&str, u8)>
+                .map(|(ability, score_res)| score_res.map(|score| (ability, score)))
+                .collect::<Result<HashMap<&str, u8>>>()?
+                .try_into()
+        }
+        _ => Err(OutOfBoundsError {
+            index: third_group.len() as u32,
+            array: third_group,
+            parsing_step: "Ability scores".to_string(),
             problem: Some("Expected array of length 3".to_string()),
         }
         .into()),
@@ -513,5 +576,38 @@ impl TryFrom<&str> for Speed {
         };
 
         Ok(speed)
+    }
+}
+
+impl TryFrom<HashMap<&str, u8>> for AbilityScores {
+    type Error = Error;
+    fn try_from(value: HashMap<&str, u8>) -> Result<Self> {
+        let error = |ability_score: &str| -> OutOfBoundsError {
+            OutOfBoundsError {
+                index: value.len() as u32,
+                array: value
+                    .iter()
+                    .map(|(key, value)| format!("{key} -> {value:?}"))
+                    .collect(),
+                parsing_step: "Ability scores".to_string(),
+                problem: Some(format!(
+                    "Ability score '{ability_score}' not found in mapping"
+                )),
+            }
+        };
+        let get_score = |ability_score: &str| -> Result<u8> {
+            value
+                .get(ability_score.chars().take(3).collect::<String>().as_str())
+                .ok_or_else(|| error(ability_score).into())
+                .map(|score| *score)
+        };
+        Ok(Self {
+            strength: get_score("strength")?,
+            dexterity: get_score("dexterity")?,
+            constitution: get_score("constitution")?,
+            intelligence: get_score("intelligence")?,
+            wisdom: get_score("wisdom")?,
+            charisma: get_score("charisma")?,
+        })
     }
 }

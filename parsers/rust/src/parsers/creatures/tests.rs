@@ -8,11 +8,13 @@ use crate::{
     models::{
         common::{Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder},
         creatures::{
-            ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints, HitPointsFormula,
-            Size, Speed,
+            AbilityScores, ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints,
+            HitPointsFormula, Size, Speed,
         },
     },
-    parsers::creatures::{extract_stat_blocks, parse_first_group, parse_second_group},
+    parsers::creatures::{
+        extract_stat_blocks, parse_first_group, parse_second_group, parse_third_group,
+    },
 };
 
 #[test]
@@ -91,6 +93,25 @@ fn parse_second_group_test() {
                 swim: None,
             }
         ))
+    )
+}
+
+#[test]
+fn parse_third_group_test() {
+    assert_eq!(
+        parse_third_group(vec![
+            "|STR|DEX|CON|INT|WIS|CHA|".to_string(),
+            "|:---:|:---:|:---:|:---:|:---:|:---:|".to_string(),
+            "|25 (+7)|11 (+0)|21 (+5)|15 (+2)|15 (+2)|4 (-3)|".to_string(),
+        ]),
+        Ok(AbilityScores {
+            strength: 25,
+            dexterity: 11,
+            constitution: 21,
+            intelligence: 15,
+            wisdom: 15,
+            charisma: 4,
+        })
     )
 }
 
