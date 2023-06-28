@@ -6,7 +6,7 @@ use crate::{
     models::{
         common::{
             AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder,
-            DamageType, Skill, StatusCondition,
+            DamageType, Skill, StatusCondition, ALL_DAMAGE_TYPES,
         },
         creatures::{
             AbilityScores, ArmorClass, ChallengeRating, ConditionalDamageModifier, CreatureType,
@@ -264,7 +264,6 @@ fn parse_skills(skills_line: &str) -> Result<Skills> {
         .collect()
 }
 
-// TODO Workaround for unspecified damage types (e.g. "Attacks made with disadvantage")
 fn parse_damage_modifier(
     modifier_type: DamageModifierType,
     damage_modifier_line: &str,
@@ -304,14 +303,20 @@ fn parse_damage_modifier(
             } else {
                 conditional_and_removed
                     .split_once(' ')
-                    .map(|(damage_type, condition)| {
-                        Ok((vec![damage_type.try_into()?], condition.to_string()))
+                    .map(|(damage_type_str, condition)| {
+                        // If no damage type can be parsed, we assume that all damage types are
+                        // modified, and the whole string `conditional` is the condition.
+                        if let Ok(damage_type) = damage_type_str.try_into() {
+                            Ok((vec![damage_type], condition.to_string()))
+                        } else {
+                            Ok((ALL_DAMAGE_TYPES.into(), conditional.to_string()))
+                        }
                     })
                     .ok_or_else(|| {
                         ParseError::new_with_problem(
                             conditional,
                             "Damage modifier",
-                            "Condtional without condition",
+                            "Conditional without condition",
                         )
                     })?
             }

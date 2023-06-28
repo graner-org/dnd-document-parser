@@ -9,7 +9,7 @@ use crate::{
     models::{
         common::{
             AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder,
-            DamageType, Skill, StatusCondition,
+            DamageType, Skill, StatusCondition, ALL_DAMAGE_TYPES,
         },
         creatures::{
             AbilityScores, ArmorClass, ChallengeRating, ConditionalDamageModifier, CreatureType,
@@ -389,6 +389,15 @@ fn damage_modifier() {
                 condition: "from non-magical attacks".to_string(),
             })
         ])
+    );
+
+    assert_eq!(
+        parse_damage_modifier(Resistance, "Attacks made with disadvantage"),
+        Ok(vec![Conditional(ConditionalDamageModifier {
+            modifier_type: Resistance,
+            damage_types: ALL_DAMAGE_TYPES.into(),
+            condition: "attacks made with disadvantage".to_string(),
+        })])
     )
 }
 
