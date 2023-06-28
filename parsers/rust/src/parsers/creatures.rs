@@ -407,7 +407,10 @@ fn parse_senses(senses_line: &str) -> Result<(PassivePerception, Senses)> {
 }
 
 fn parse_languages(languages_line: &str) -> Result<Languages> {
-    todo!()
+    Ok(languages_line
+        .split(", ")
+        .map(ToString::to_string)
+        .collect())
 }
 
 fn parse_challenge_rating(challenge_rating_line: &str) -> Result<ChallengeRating> {
