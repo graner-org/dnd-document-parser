@@ -17,6 +17,22 @@ pub struct ParseError {
 }
 
 impl ParseError {
+    pub fn new(string: &str, parsing_step: &str) -> Self {
+        Self {
+            string: string.to_string(),
+            parsing_step: parsing_step.to_string(),
+            problem: None,
+        }
+    }
+
+    pub fn new_with_problem(string: &str, parsing_step: &str, problem: &str) -> Self {
+        Self {
+            string: string.to_string(),
+            parsing_step: parsing_step.to_string(),
+            problem: Some(problem.to_string()),
+        }
+    }
+
     pub fn from_intparse_error(
         string: String,
         parsing_step: String,

@@ -1,12 +1,16 @@
-use std::{collections::HashMap, ops::Deref};
+use std::collections::HashMap;
 
 use itertools::Itertools;
 
 use crate::{
     models::{
-        common::{Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder},
+        common::{
+            AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder,
+            DamageType, Skill, StatusCondition, ALL_DAMAGE_TYPES,
+        },
         creatures::{
-            AbilityScores, ArmorClass, CreatureType, CreatureTypeEnum, FlySpeed, HitPoints,
+            AbilityScores, ArmorClass, ChallengeRating, ConditionalDamageModifier, CreatureType,
+            CreatureTypeEnum, DamageModifier, DamageModifierType, FlySpeed, HitPoints,
             HitPointsFormula, Size, Speed,
         },
     },
@@ -14,6 +18,15 @@ use crate::{
 };
 
 type Name = String;
+type SavingThrows = HashMap<AbilityScore, i8>;
+type Skills = HashMap<Skill, i8>;
+type DamageResistances = Vec<DamageModifier>;
+type DamageImmunities = Vec<DamageModifier>;
+type DamageVulnerabilities = Vec<DamageModifier>;
+type ConditionImmunities = Vec<StatusCondition>;
+type Senses = Vec<String>;
+type PassivePerception = u8;
+type Languages = Vec<String>;
 
 #[cfg(test)]
 mod tests;
@@ -43,11 +56,14 @@ fn extract_stat_blocks(document: String) -> Vec<Vec<String>> {
         .collect_vec()
 }
 
-fn clean_stat_block_line(line: &str) -> Result<&str> {
+fn clean_stat_block_line(line: &String) -> Result<(String, &str)> {
     line.rsplit_once("**")
-        .unzip()
-        .1
-        .map(str::trim)
+        .map(|(line_type, line)| {
+            (
+                line_type.replacen("- **", "", 1).to_lowercase(),
+                line.trim(),
+            )
+        })
         .ok_or_else(|| {
             ParseError {
                 string: line.to_string(),
@@ -112,9 +128,9 @@ fn parse_first_group(first_group: Vec<String>) -> Result<(Name, Size, CreatureTy
 fn parse_second_group(second_group: Vec<String>) -> Result<(ArmorClass, HitPoints, Speed)> {
     match &second_group[..] {
         [ac_line, hp_line, speed_line] => Ok((
-            clean_stat_block_line(ac_line)?.try_into()?,
-            clean_stat_block_line(hp_line)?.try_into()?,
-            clean_stat_block_line(speed_line)?.try_into()?,
+            clean_stat_block_line(ac_line)?.1.try_into()?,
+            clean_stat_block_line(hp_line)?.1.try_into()?,
+            clean_stat_block_line(speed_line)?.1.try_into()?,
         )),
         _ => Err(OutOfBoundsError {
             array: second_group.clone(),
@@ -187,6 +203,291 @@ fn parse_third_group(third_group: Vec<String>) -> Result<AbilityScores> {
         }
         .into()),
     }
+}
+
+fn parse_fourth_group(
+    fourth_group: Vec<String>,
+) -> Result<(
+    Option<SavingThrows>,
+    Option<Skills>,
+    Option<DamageResistances>,
+    Option<DamageImmunities>,
+    Option<DamageVulnerabilities>,
+    Option<ConditionImmunities>,
+    Senses,
+    PassivePerception,
+    Languages,
+    ChallengeRating,
+)> {
+    use DamageModifierType::{Immunity, Resistance, Vulnerability};
+    fn parse_line<T>(
+        line_type: &str,
+        parser: fn(&str) -> Result<T>,
+        map: &HashMap<String, &str>,
+    ) -> Result<Option<T>> {
+        map.get(line_type).map(|line| parser(line)).transpose()
+    };
+
+    let lines: HashMap<String, &str> = fourth_group
+        .iter()
+        .map(clean_stat_block_line)
+        .try_collect()?;
+
+    let (passive_perception, senses) =
+        parse_line("senses", parse_senses, &lines)?.ok_or_else(|| OutOfBoundsError {
+            array: fourth_group.clone(),
+            index: 0,
+            parsing_step: "Fourth group".to_string(),
+            problem: Some("Senses line not found".to_string()),
+        })?;
+
+    Ok((
+        parse_line("saving throws", parse_saving_throws, &lines)?,
+        parse_line("skills", parse_skills, &lines)?,
+        parse_line(
+            "damage resistances",
+            |line| parse_damage_modifier(Resistance, line),
+            &lines,
+        )?,
+        parse_line(
+            "damage immunities",
+            |line| parse_damage_modifier(Immunity, line),
+            &lines,
+        )?,
+        parse_line(
+            "damage vulnerabilities",
+            |line| parse_damage_modifier(Vulnerability, line),
+            &lines,
+        )?,
+        parse_line("condition immunities", parse_condition_immunities, &lines)?,
+        senses,
+        passive_perception,
+        parse_line("languages", parse_languages, &lines)?.ok_or_else(|| OutOfBoundsError {
+            array: fourth_group.clone(),
+            index: 0,
+            parsing_step: "Fourth group".to_string(),
+            problem: Some("Languages line not found".to_string()),
+        })?,
+        parse_line("challenge", parse_challenge_rating, &lines)?.ok_or_else(|| {
+            OutOfBoundsError {
+                array: fourth_group.clone(),
+                index: 0,
+                parsing_step: "Fourth group".to_string(),
+                problem: Some("Challenge rating line not found".to_string()),
+            }
+        })?,
+    ))
+}
+
+fn parse_saving_throws(saving_throws_line: &str) -> Result<SavingThrows> {
+    saving_throws_line
+        .to_lowercase()
+        .split(", ")
+        .map(|save| {
+            if let Some((ability, save_mod)) = save.split_once(' ') {
+                Ok((
+                    ability.try_into()?,
+                    save_mod
+                        .parse::<i8>()
+                        .map_err(ParseError::from_intparse_error(
+                            save_mod.to_string(),
+                            "Saving_throws".to_string(),
+                        ))?,
+                ))
+            } else {
+                Err(ParseError::new(save, "Saving throws").into())
+            }
+        })
+        .collect()
+}
+
+fn parse_skills(skills_line: &str) -> Result<Skills> {
+    skills_line
+        .to_lowercase()
+        .split(", ")
+        .map(|skill| {
+            if let Some((skill, skill_mod)) = skill.split_once(' ') {
+                Ok((
+                    skill.try_into()?,
+                    skill_mod
+                        .parse::<i8>()
+                        .map_err(ParseError::from_intparse_error(
+                            skill_mod.to_string(),
+                            "Skills".to_string(),
+                        ))?,
+                ))
+            } else {
+                Err(ParseError::new(skill, "Skills").into())
+            }
+        })
+        .collect()
+}
+
+fn parse_damage_modifier(
+    modifier_type: DamageModifierType,
+    damage_modifier_line: &str,
+) -> Result<Vec<DamageModifier>> {
+    use DamageModifier::{Conditional, Unconditional};
+
+    let parse_conditional = |conditional: &str| -> Result<ConditionalDamageModifier> {
+        let conditional_and_removed = conditional.replacen("and ", "", 1);
+        let (conditional_damage_types, condition) = {
+            if conditional_and_removed.contains(", ") {
+                let (damage_types_str, condition_with_last_type) =
+                    conditional_and_removed.rsplit_once(", ").ok_or_else(|| {
+                        ParseError::new_with_problem(
+                            conditional_and_removed.as_str(),
+                            "Damage modifier",
+                            "No `, ` found",
+                        )
+                    })?;
+
+                let (last_damage_type, condition) =
+                    condition_with_last_type.split_once(" ").ok_or_else(|| {
+                        ParseError::new_with_problem(
+                            condition_with_last_type,
+                            "Damage modifier",
+                            "Conditional without condition",
+                        )
+                    })?;
+
+                let damage_types = damage_types_str
+                    .split(", ")
+                    .chain([last_damage_type])
+                    .map(str::trim)
+                    .map(DamageType::try_from)
+                    .try_collect()?;
+
+                Result::Ok((damage_types, condition.to_string()))
+            } else {
+                conditional_and_removed
+                    .split_once(' ')
+                    .map(|(damage_type_str, condition)| {
+                        // If no damage type can be parsed, we assume that all damage types are
+                        // modified, and the whole string `conditional` is the condition.
+                        if let Ok(damage_type) = damage_type_str.try_into() {
+                            Ok((vec![damage_type], condition.to_string()))
+                        } else {
+                            Ok((ALL_DAMAGE_TYPES.into(), conditional.to_string()))
+                        }
+                    })
+                    .ok_or_else(|| {
+                        ParseError::new_with_problem(
+                            conditional,
+                            "Damage modifier",
+                            "Conditional without condition",
+                        )
+                    })?
+            }
+        }?;
+
+        Ok(ConditionalDamageModifier {
+            modifier_type: modifier_type.clone(),
+            damage_types: conditional_damage_types,
+            condition,
+        })
+    };
+
+    match damage_modifier_line.to_lowercase().split(';').collect_vec()[..] {
+        [single_modifier_type] => {
+            if single_modifier_type.contains("from") || single_modifier_type.contains("attack") {
+                Ok(vec![Conditional(parse_conditional(single_modifier_type)?)])
+            } else {
+                single_modifier_type
+                    .split(", ")
+                    .map(str::trim)
+                    .map(DamageType::try_from)
+                    .map_ok(Unconditional)
+                    .try_collect()
+            }
+        }
+        [unconditional, conditional] => {
+            let unconditional_modifiers = unconditional
+                .split(", ")
+                .map(str::trim)
+                .map(DamageType::try_from)
+                .map_ok(Unconditional);
+
+            let conditional_modifiers = parse_conditional(conditional)?;
+
+            unconditional_modifiers
+                .chain([Ok(Conditional(conditional_modifiers))])
+                .try_collect()
+        }
+        _ => Err(ParseError::new_with_problem(
+            damage_modifier_line,
+            "Damage Modifier",
+            "More than 2 types of modifiers",
+        )
+        .into()),
+    }
+}
+
+fn parse_condition_immunities(condition_immunities_line: &str) -> Result<ConditionImmunities> {
+    condition_immunities_line
+        .to_lowercase()
+        .split(", ")
+        .map(StatusCondition::try_from)
+        .collect()
+}
+
+fn parse_senses(senses_line: &str) -> Result<(PassivePerception, Senses)> {
+    fn parse_passive_perception(passive_perception_str: &str) -> Option<PassivePerception> {
+        passive_perception_str
+            .to_lowercase()
+            .strip_prefix("passive perception ")
+            .map(|number| number.parse().ok())
+            .flatten()
+    }
+
+    let mut passive_perception: Option<u8> = None;
+    let mut senses = vec![];
+    senses_line
+        // Passive perception is usually last, so for performance reasons we start at the back.
+        .rsplit(", ")
+        .for_each(|sense| {
+            if passive_perception.is_some() {
+                senses.push(sense.to_string())
+            } else {
+                // Try to parse passive perception
+                passive_perception = parse_passive_perception(sense);
+                if passive_perception.is_none() {
+                    // passive perception could not be parsed, so the sense is added to the list.
+                    senses.push(sense.to_string())
+                }
+            }
+        });
+
+    passive_perception
+        .ok_or_else(|| {
+            { ParseError::new_with_problem(senses_line, "Senses", "No passive perception found") }
+                .into()
+        })
+        .map(|passive| (passive, senses))
+}
+
+fn parse_languages(languages_line: &str) -> Result<Languages> {
+    Ok(languages_line
+        .split(", ")
+        .map(ToString::to_string)
+        .collect())
+}
+
+fn parse_challenge_rating(challenge_rating_line: &str) -> Result<ChallengeRating> {
+    challenge_rating_line
+        .split_once(' ')
+        .unzip()
+        .0
+        .ok_or_else(|| {
+            {
+                ParseError::new_with_problem(
+                    challenge_rating_line,
+                    "Challenge Rating",
+                    "No separating ` ` found",
+                )
+            }
+        })?
+        .try_into()
 }
 
 impl TryFrom<&str> for Size {
@@ -609,5 +910,108 @@ impl TryFrom<HashMap<&str, u8>> for AbilityScores {
             wisdom: get_score("wisdom")?,
             charisma: get_score("charisma")?,
         })
+    }
+}
+
+impl TryFrom<&str> for AbilityScore {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        use AbilityScore::*;
+        match value {
+            "str" => Ok(Strength),
+            "con" => Ok(Constitution),
+            "dex" => Ok(Dexterity),
+            "wis" => Ok(Wisdom),
+            "int" => Ok(Intelligence),
+            "cha" => Ok(Charisma),
+            _ => Err(ParseError {
+                string: value.to_string(),
+                parsing_step: "Ability score".to_string(),
+                problem: None,
+            }
+            .into()),
+        }
+    }
+}
+
+impl TryFrom<&str> for Skill {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        use Skill::*;
+        match value {
+            "acrobatics" => Ok(Acrobatics),
+            "animal handling" => Ok(AnimalHandling),
+            "arcana" => Ok(Arcana),
+            "athletics" => Ok(Athletics),
+            "deception" => Ok(Deception),
+            "history" => Ok(History),
+            "insight" => Ok(Insight),
+            "intimidation" => Ok(Intimidation),
+            "investigation" => Ok(Investigation),
+            "medicine" => Ok(Medicine),
+            "nature" => Ok(Nature),
+            "perception" => Ok(Perception),
+            "performance" => Ok(Performance),
+            "persuasion" => Ok(Persuasion),
+            "religion" => Ok(Religion),
+            "sleight of hand" => Ok(SleightOfHand),
+            "stealth" => Ok(Stealth),
+            "survival" => Ok(Survival),
+            _ => Err(ParseError {
+                string: value.to_string(),
+                parsing_step: "Skill".to_string(),
+                problem: None,
+            }
+            .into()),
+        }
+    }
+}
+
+impl TryFrom<&str> for StatusCondition {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        use StatusCondition::*;
+        match value {
+            "blinded" => Ok(Blinded),
+            "charmed" => Ok(Charmed),
+            "deafened" => Ok(Deafened),
+            "exhaustion" => Ok(Exhaustion),
+            "frightened" => Ok(Frightened),
+            "grappled" => Ok(Grappled),
+            "incapacitated" => Ok(Incapacitated),
+            "invisible" => Ok(Invisible),
+            "paralyzed" => Ok(Paralyzed),
+            "petrified" => Ok(Petrified),
+            "poisoned" => Ok(Poisoned),
+            "prone" => Ok(Prone),
+            "restrained" => Ok(Restrained),
+            "stunned" => Ok(Stunned),
+            _ => Err(ParseError {
+                string: value.to_string(),
+                parsing_step: "Status Condition".to_string(),
+                problem: None,
+            }
+            .into()),
+        }
+    }
+}
+
+impl TryFrom<&str> for ChallengeRating {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        use ChallengeRating::*;
+        match value {
+            "1/8" => Ok(Eighth),
+            "1/4" => Ok(Quarter),
+            "1/2" => Ok(Half),
+            whole => whole
+                .parse()
+                .map(WholeNumber)
+                .map_err(ParseError::from_intparse_error(
+                    value.to_string(),
+                    "Challenge Rating".to_string(),
+                ))
+                .map_err(ParseError::into),
+        }
     }
 }

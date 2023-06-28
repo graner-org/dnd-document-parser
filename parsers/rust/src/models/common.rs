@@ -138,6 +138,25 @@ pub enum DamageType {
     Thunder,
 }
 
+pub const ALL_DAMAGE_TYPES: [DamageType; 13] = {
+    use DamageType::*;
+    [
+        Acid,
+        Bludgeoning,
+        Cold,
+        Fire,
+        Force,
+        Lightning,
+        Necrotic,
+        Piercing,
+        Poison,
+        Psychic,
+        Radiant,
+        Slashing,
+        Thunder,
+    ]
+};
+
 impl To5etools for DamageType {
     fn to_5etools_base(&self) -> Value {
         use DamageType::{
