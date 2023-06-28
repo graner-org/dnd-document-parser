@@ -56,11 +56,14 @@ fn extract_stat_blocks(document: String) -> Vec<Vec<String>> {
         .collect_vec()
 }
 
-fn clean_stat_block_line(line: &str) -> Result<&str> {
+fn clean_stat_block_line(line: &String) -> Result<(String, &str)> {
     line.rsplit_once("**")
-        .unzip()
-        .1
-        .map(str::trim)
+        .map(|(line_type, line)| {
+            (
+                line_type.replacen("- **", "", 1).to_lowercase(),
+                line.trim(),
+            )
+        })
         .ok_or_else(|| {
             ParseError {
                 string: line.to_string(),
@@ -125,9 +128,9 @@ fn parse_first_group(first_group: Vec<String>) -> Result<(Name, Size, CreatureTy
 fn parse_second_group(second_group: Vec<String>) -> Result<(ArmorClass, HitPoints, Speed)> {
     match &second_group[..] {
         [ac_line, hp_line, speed_line] => Ok((
-            clean_stat_block_line(ac_line)?.try_into()?,
-            clean_stat_block_line(hp_line)?.try_into()?,
-            clean_stat_block_line(speed_line)?.try_into()?,
+            clean_stat_block_line(ac_line)?.1.try_into()?,
+            clean_stat_block_line(hp_line)?.1.try_into()?,
+            clean_stat_block_line(speed_line)?.1.try_into()?,
         )),
         _ => Err(OutOfBoundsError {
             array: second_group.clone(),
@@ -216,7 +219,64 @@ fn parse_fourth_group(
     Languages,
     ChallengeRating,
 )> {
-    todo!()
+    use DamageModifierType::{Immunity, Resistance, Vulnerability};
+    fn parse_line<T>(
+        line_type: &str,
+        parser: fn(&str) -> Result<T>,
+        map: &HashMap<String, &str>,
+    ) -> Result<Option<T>> {
+        map.get(line_type).map(|line| parser(line)).transpose()
+    };
+
+    let lines: HashMap<String, &str> = fourth_group
+        .iter()
+        .map(clean_stat_block_line)
+        .try_collect()?;
+
+    let (passive_perception, senses) =
+        parse_line("senses", parse_senses, &lines)?.ok_or_else(|| OutOfBoundsError {
+            array: fourth_group.clone(),
+            index: 0,
+            parsing_step: "Fourth group".to_string(),
+            problem: Some("Senses line not found".to_string()),
+        })?;
+
+    Ok((
+        parse_line("saving throws", parse_saving_throws, &lines)?,
+        parse_line("skills", parse_skills, &lines)?,
+        parse_line(
+            "damage resistances",
+            |line| parse_damage_modifier(Resistance, line),
+            &lines,
+        )?,
+        parse_line(
+            "damage immunities",
+            |line| parse_damage_modifier(Immunity, line),
+            &lines,
+        )?,
+        parse_line(
+            "damage vulnerabilities",
+            |line| parse_damage_modifier(Vulnerability, line),
+            &lines,
+        )?,
+        parse_line("condition immunities", parse_condition_immunities, &lines)?,
+        senses,
+        passive_perception,
+        parse_line("languages", parse_languages, &lines)?.ok_or_else(|| OutOfBoundsError {
+            array: fourth_group.clone(),
+            index: 0,
+            parsing_step: "Fourth group".to_string(),
+            problem: Some("Languages line not found".to_string()),
+        })?,
+        parse_line("challenge", parse_challenge_rating, &lines)?.ok_or_else(|| {
+            OutOfBoundsError {
+                array: fourth_group.clone(),
+                index: 0,
+                parsing_step: "Fourth group".to_string(),
+                problem: Some("Challenge rating line not found".to_string()),
+            }
+        })?,
+    ))
 }
 
 fn parse_saving_throws(saving_throws_line: &str) -> Result<SavingThrows> {

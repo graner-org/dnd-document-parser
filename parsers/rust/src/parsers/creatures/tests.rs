@@ -175,15 +175,54 @@ fn parse_fourth_group_test() {
 
     assert_eq!(damvul, Some(vec![Unconditional(Fire)]));
 
-    assert_eq!(condimm, Some(vec![Charmed, Frightened]),);
+    assert_eq!(condimm, Some(vec![Charmed, Frightened]));
 
-    assert_eq!(senses, vec!["blindsight 60 ft.".to_string()],);
+    assert_eq!(senses, vec!["blindsight 60 ft.".to_string()]);
 
     assert_eq!(passperc, 15);
 
-    assert_eq!(langs, vec!["Common".to_string(), "Giant".to_string()],);
+    assert_eq!(langs, vec!["Common".to_string(), "Giant".to_string()]);
 
-    assert_eq!(cr, ChallengeRating::WholeNumber(16),);
+    assert_eq!(cr, ChallengeRating::WholeNumber(16));
+
+    let (saves, skills, damres, damimm, damvul, condimm, senses, passperc, langs, cr) =
+        match parse_fourth_group(vec![
+            "- **Damage Resistances** Piercing from non-magical attacks".to_string(),
+            "- **Damage Vulnerabilities** Fire".to_string(),
+            "- **Senses** Passive Perception 15, blindsight 60 ft.".to_string(),
+            "- **Languages** Common, Giant".to_string(),
+            "- **Challenge** 16 (15,000 XP)".to_string(),
+        ]) {
+            Ok(ret) => ret,
+            Err(err) => panic!("{err:?}"),
+        };
+
+    assert_eq!(saves, None);
+
+    assert_eq!(skills, None);
+
+    assert_eq!(
+        damres,
+        Some(vec![Conditional(ConditionalDamageModifier {
+            modifier_type: DamageModifierType::Resistance,
+            damage_types: vec![Piercing],
+            condition: "from non-magical attacks".to_string(),
+        })]),
+    );
+
+    assert_eq!(damimm, None);
+
+    assert_eq!(damvul, Some(vec![Unconditional(Fire)]));
+
+    assert_eq!(condimm, None);
+
+    assert_eq!(senses, vec!["blindsight 60 ft.".to_string()]);
+
+    assert_eq!(passperc, 15);
+
+    assert_eq!(langs, vec!["Common".to_string(), "Giant".to_string()]);
+
+    assert_eq!(cr, ChallengeRating::WholeNumber(16));
 }
 
 #[test]
