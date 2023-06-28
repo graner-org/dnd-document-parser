@@ -264,6 +264,7 @@ fn parse_skills(skills_line: &str) -> Result<Skills> {
         .collect()
 }
 
+// TODO Workaround for unspecified damage types (e.g. "Attacks made with disadvantage")
 fn parse_damage_modifier(
     modifier_type: DamageModifierType,
     damage_modifier_line: &str,
@@ -272,7 +273,7 @@ fn parse_damage_modifier(
 
     let parse_conditional = |conditional: &str| -> Result<ConditionalDamageModifier> {
         let conditional_and_removed = conditional.replacen("and ", "", 1);
-        let (conditional_damage_types, condition): (Vec<DamageType>, String) = {
+        let (conditional_damage_types, condition) = {
             if conditional_and_removed.contains(", ") {
                 let (damage_types_str, condition_with_last_type) =
                     conditional_and_removed.rsplit_once(", ").ok_or_else(|| {
@@ -292,22 +293,20 @@ fn parse_damage_modifier(
                         )
                     })?;
 
-                let damage_types: Vec<DamageType> = damage_types_str
+                let damage_types = damage_types_str
                     .split(", ")
                     .chain([last_damage_type])
                     .map(str::trim)
                     .map(DamageType::try_from)
                     .try_collect()?;
 
-                Ok((damage_types, condition.to_string()))
+                Result::Ok((damage_types, condition.to_string()))
             } else {
                 conditional_and_removed
                     .split_once(' ')
-                    .map(
-                        |(damage_type, condition)| -> Result<(Vec<DamageType>, String)> {
-                            Ok((vec![damage_type.try_into()?], condition.to_string()))
-                        },
-                    )
+                    .map(|(damage_type, condition)| {
+                        Ok((vec![damage_type.try_into()?], condition.to_string()))
+                    })
                     .ok_or_else(|| {
                         ParseError::new_with_problem(
                             conditional,
