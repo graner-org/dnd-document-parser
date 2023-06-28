@@ -13,7 +13,6 @@ use crate::{
             CreatureTypeEnum, DamageModifier, DamageModifierType, FlySpeed, HitPoints,
             HitPointsFormula, Size, Speed,
         },
-        spells,
     },
     utils::error::{Error, OutOfBoundsError, ParseError, Result},
 };
@@ -373,7 +372,38 @@ fn parse_condition_immunities(condition_immunities_line: &str) -> Result<Conditi
 }
 
 fn parse_senses(senses_line: &str) -> Result<(PassivePerception, Senses)> {
-    todo!()
+    fn parse_passive_perception(passive_perception_str: &str) -> Option<PassivePerception> {
+        passive_perception_str
+            .to_lowercase()
+            .strip_prefix("passive perception ")
+            .map(|number| number.parse().ok())
+            .flatten()
+    }
+
+    let mut passive_perception: Option<u8> = None;
+    let mut senses = vec![];
+    senses_line
+        // Passive perception is usually last, so for performance reasons we start at the back.
+        .rsplit(", ")
+        .for_each(|sense| {
+            if passive_perception.is_some() {
+                senses.push(sense.to_string())
+            } else {
+                // Try to parse passive perception
+                passive_perception = parse_passive_perception(sense);
+                if passive_perception.is_none() {
+                    // passive perception could not be parsed, so the sense is added to the list.
+                    senses.push(sense.to_string())
+                }
+            }
+        });
+
+    passive_perception
+        .ok_or_else(|| {
+            { ParseError::new_with_problem(senses_line, "Senses", "No passive perception found") }
+                .into()
+        })
+        .map(|passive| (passive, senses))
 }
 
 fn parse_languages(languages_line: &str) -> Result<Languages> {
