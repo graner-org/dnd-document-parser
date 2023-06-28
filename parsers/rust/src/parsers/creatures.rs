@@ -365,7 +365,11 @@ fn parse_damage_modifier(
 }
 
 fn parse_condition_immunities(condition_immunities_line: &str) -> Result<ConditionImmunities> {
-    todo!()
+    condition_immunities_line
+        .to_lowercase()
+        .split(", ")
+        .map(StatusCondition::try_from)
+        .collect()
 }
 
 fn parse_senses(senses_line: &str) -> Result<(PassivePerception, Senses)> {
@@ -850,6 +854,35 @@ impl TryFrom<&str> for Skill {
             _ => Err(ParseError {
                 string: value.to_string(),
                 parsing_step: "Skill".to_string(),
+                problem: None,
+            }
+            .into()),
+        }
+    }
+}
+
+impl TryFrom<&str> for StatusCondition {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        use StatusCondition::*;
+        match value {
+            "blinded" => Ok(Blinded),
+            "charmed" => Ok(Charmed),
+            "deafened" => Ok(Deafened),
+            "exhaustion" => Ok(Exhaustion),
+            "frightened" => Ok(Frightened),
+            "grappled" => Ok(Grappled),
+            "incapacitated" => Ok(Incapacitated),
+            "invisible" => Ok(Invisible),
+            "paralyzed" => Ok(Paralyzed),
+            "petrified" => Ok(Petrified),
+            "poisoned" => Ok(Poisoned),
+            "prone" => Ok(Prone),
+            "restrained" => Ok(Restrained),
+            "stunned" => Ok(Stunned),
+            _ => Err(ParseError {
+                string: value.to_string(),
+                parsing_step: "Status Condition".to_string(),
                 problem: None,
             }
             .into()),
