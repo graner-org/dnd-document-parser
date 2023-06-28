@@ -414,7 +414,20 @@ fn parse_languages(languages_line: &str) -> Result<Languages> {
 }
 
 fn parse_challenge_rating(challenge_rating_line: &str) -> Result<ChallengeRating> {
-    todo!()
+    challenge_rating_line
+        .split_once(' ')
+        .unzip()
+        .0
+        .ok_or_else(|| {
+            {
+                ParseError::new_with_problem(
+                    challenge_rating_line,
+                    "Challenge Rating",
+                    "No separating ` ` found",
+                )
+            }
+        })?
+        .try_into()
 }
 
 impl TryFrom<&str> for Size {
@@ -919,6 +932,26 @@ impl TryFrom<&str> for StatusCondition {
                 problem: None,
             }
             .into()),
+        }
+    }
+}
+
+impl TryFrom<&str> for ChallengeRating {
+    type Error = Error;
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        use ChallengeRating::*;
+        match value {
+            "1/8" => Ok(Eighth),
+            "1/4" => Ok(Quarter),
+            "1/2" => Ok(Half),
+            whole => whole
+                .parse()
+                .map(WholeNumber)
+                .map_err(ParseError::from_intparse_error(
+                    value.to_string(),
+                    "Challenge Rating".to_string(),
+                ))
+                .map_err(ParseError::into),
         }
     }
 }
