@@ -95,7 +95,8 @@ fn named_entry() {
     assert_eq!(
         NamedEntry {
             name: "Entry".to_string(),
-            entry: "Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string()
+            entry: "Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string(),
+            sub_entries: None,
         }
         .to_5etools_base(),
         json!({
@@ -109,7 +110,8 @@ fn named_entry() {
     assert_eq!(
         NamedEntry {
             name: "Entry".to_string(),
-            entry: "Melee Weapon Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string()
+            entry: "Melee Weapon Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string(),
+            sub_entries: None,
         }
         .to_5etools_base(),
         json!({
@@ -123,13 +125,59 @@ fn named_entry() {
     assert_eq!(
         NamedEntry {
             name: "Entry".to_string(),
-            entry: "Ranged Spell Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string()
+            entry: "Ranged Spell Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string(),
+            sub_entries: None,
         }
         .to_5etools_base(),
         json!({
             "name": "Entry",
             "entries": [
                 "{@atk rs} {@hit 7} to hit. {@h}{@damage 2d4 - 3} acid damage."
+            ]
+        })
+    );
+
+    assert_eq!(
+        NamedEntry {
+            name: "Entry".to_string(),
+            entry: "Ranged Spell Attack +7 to hit. Hit: 2d4 - 3 acid damage.".to_string(),
+            sub_entries: Some(vec![
+                NamedEntry {
+                    name: "item1".to_string(),
+                    entry: "entry1".to_string(),
+                    sub_entries: None,
+                },
+                NamedEntry {
+                    name: "item2".to_string(),
+                    entry: "entry2".to_string(),
+                    sub_entries: None,
+                },
+            ]),
+        }
+        .to_5etools_base(),
+        json!({
+            "name": "Entry",
+            "entries": [
+                "{@atk rs} {@hit 7} to hit. {@h}{@damage 2d4 - 3} acid damage.",
+                {
+                    "type": "list",
+                    "items": [
+                        {
+                            "type": "item",
+                            "name": "item1",
+                            "entries": [
+                                "entry1"
+                            ],
+                        },
+                        {
+                            "type": "item",
+                            "name": "item2",
+                            "entries": [
+                                "entry2"
+                            ],
+                        },
+                    ]
+                }
             ]
         })
     );

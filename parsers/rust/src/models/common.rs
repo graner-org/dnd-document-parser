@@ -506,6 +506,7 @@ impl To5etools for Alignment {
 pub struct NamedEntry {
     pub name: String,
     pub entry: String,
+    pub sub_entries: Option<Vec<Self>>,
 }
 
 impl To5etools for NamedEntry {
@@ -536,12 +537,27 @@ impl To5etools for NamedEntry {
         let entry = attack_type_re.replace(&self.entry, format!("{{@atk {attack_type}}}"));
         let entry = to_hit_re.replace(&entry, "{@hit $to_hit} to hit");
         let entry = hit_re.replace(&entry, ". {@h}");
-        let entry = dice_re.replace_all(&entry, "{@damage $dice}");
+        let entry = Value::String(dice_re.replace_all(&entry, "{@damage $dice}").to_string());
+        let sub_entries = self.sub_entries.as_ref().map(|sub_entries| {
+            sub_entries
+                .iter()
+                .map(|entry| merge_json(vec![json!({"type": "item"}), entry.to_5etools_base()]))
+                .collect_vec()
+        });
+        let entries = if let Some(items) = sub_entries {
+            vec![
+                entry,
+                json!({
+                    "type": "list",
+                    "items": items
+                }),
+            ]
+        } else {
+            vec![entry]
+        };
         json!({
             "name": self.name,
-            "entries": [
-                entry,
-            ]
+            "entries": entries
         })
     }
 }

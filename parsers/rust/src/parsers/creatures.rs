@@ -226,7 +226,7 @@ fn parse_fourth_group(
         map: &HashMap<String, &str>,
     ) -> Result<Option<T>> {
         map.get(line_type).map(|line| parser(line)).transpose()
-    };
+    }
 
     let lines: HashMap<String, &str> = fourth_group
         .iter()
