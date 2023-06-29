@@ -9,7 +9,7 @@ use crate::{
     models::{
         common::{
             AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder,
-            DamageType, Skill, StatusCondition, ALL_DAMAGE_TYPES,
+            DamageType, NamedEntry, Skill, StatusCondition, ALL_DAMAGE_TYPES,
         },
         creatures::{
             AbilityScores, ArmorClass, ChallengeRating, ConditionalDamageModifier, CreatureType,
@@ -20,8 +20,8 @@ use crate::{
     parsers::creatures::{
         extract_stat_blocks, parse_challenge_rating, parse_condition_immunities,
         parse_damage_modifier, parse_first_group, parse_fourth_group, parse_languages,
-        parse_saving_throws, parse_second_group, parse_senses, parse_skills, parse_third_group,
-        SavingThrows, Skills,
+        parse_named_entry, parse_saving_throws, parse_second_group, parse_senses, parse_skills,
+        parse_third_group, SavingThrows, Skills,
     },
 };
 
@@ -470,4 +470,29 @@ fn challenge_rating() {
     use ChallengeRating::{Quarter, WholeNumber};
     assert_eq!(parse_challenge_rating("11 (7,200 XP)"), Ok(WholeNumber(11)));
     assert_eq!(parse_challenge_rating("1/4 (400 XP)"), Ok(Quarter));
+}
+
+#[test]
+fn named_entry() {
+    assert_eq!(
+        parse_named_entry("***Ability.*** Description of ability"),
+        Ok(NamedEntry {
+            name: "Ability.".to_string(),
+            entry: "Description of ability".to_string(),
+            sub_entries: None,
+        })
+    );
+
+    assert_eq!(
+        parse_named_entry("***Ability.*** Description of ability\n* **Sub-entry.** Description"),
+        Ok(NamedEntry {
+            name: "Ability.".to_string(),
+            entry: "Description of ability".to_string(),
+            sub_entries: Some(vec![NamedEntry {
+                name: "Sub-entry.".to_string(),
+                entry: "Description".to_string(),
+                sub_entries: None,
+            }]),
+        })
+    );
 }

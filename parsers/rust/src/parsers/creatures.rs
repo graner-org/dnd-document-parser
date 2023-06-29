@@ -6,7 +6,7 @@ use crate::{
     models::{
         common::{
             AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder,
-            DamageType, Skill, StatusCondition, ALL_DAMAGE_TYPES,
+            DamageType, NamedEntry, Skill, StatusCondition, ALL_DAMAGE_TYPES,
         },
         creatures::{
             AbilityScores, ArmorClass, ChallengeRating, ConditionalDamageModifier, CreatureType,
@@ -488,6 +488,57 @@ fn parse_challenge_rating(challenge_rating_line: &str) -> Result<ChallengeRating
             }
         })?
         .try_into()
+}
+
+fn parse_named_entry(entry: &str) -> Result<NamedEntry> {
+    let (name, entries) = entry
+        .strip_prefix("***")
+        .ok_or_else(|| {
+            ParseError::new_with_problem(entry, "Named Entry", "No leading `***` found")
+        })?
+        .split_once("*** ")
+        .ok_or_else(|| {
+            ParseError::new_with_problem(entry, "Named Entry", "No second `***` found")
+        })?;
+    let mut split_entries = entries.split("\n* ").peekable();
+    let main_entry = split_entries
+        .next()
+        .ok_or_else(|| ParseError::new_with_problem(entries, "Named Entry", "Empty entry"))?;
+    let sub_entries = if split_entries.peek().is_some() {
+        split_entries
+            .map(|entry_line| {
+                let (name, entry) = entry_line
+                    .strip_prefix("**")
+                    .ok_or_else(|| {
+                        ParseError::new_with_problem(
+                            entry_line,
+                            "Named Entry (sub-entry)",
+                            "No leading `**` found",
+                        )
+                    })?
+                    .split_once("** ")
+                    .ok_or_else(|| {
+                        ParseError::new_with_problem(
+                            entry_line,
+                            "Named Entry (sub-entry)",
+                            "No second `**` found",
+                        )
+                    })?;
+                Result::Ok(Some(NamedEntry {
+                    name: name.to_string(),
+                    entry: entry.to_string(),
+                    sub_entries: None,
+                }))
+            })
+            .try_collect()?
+    } else {
+        None
+    };
+    Ok(NamedEntry {
+        name: name.to_string(),
+        entry: main_entry.to_string(),
+        sub_entries,
+    })
 }
 
 impl TryFrom<&str> for Size {
