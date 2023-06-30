@@ -27,6 +27,13 @@ type ConditionImmunities = Vec<StatusCondition>;
 type Senses = Vec<String>;
 type PassivePerception = u8;
 type Languages = Vec<String>;
+type Traits = Vec<NamedEntry>;
+type Actions = Vec<NamedEntry>;
+type BonusActions = Vec<NamedEntry>;
+type Reactions = Vec<NamedEntry>;
+type LegendaryActions = Vec<NamedEntry>;
+type MythicHeader = String;
+type MythicActions = Vec<NamedEntry>;
 
 #[cfg(test)]
 mod tests;
@@ -279,6 +286,88 @@ fn parse_fourth_group(
     ))
 }
 
+fn parse_fifth_group(
+    fifth_group: Vec<String>,
+) -> Result<(
+    Option<Traits>,
+    Option<Actions>,
+    Option<BonusActions>,
+    Option<Reactions>,
+    Option<LegendaryActions>,
+    Option<MythicHeader>,
+    Option<MythicActions>,
+)> {
+    let sub_groups_str = fifth_group
+        .iter()
+        .filter(|line| !line.is_empty())
+        .join("\n");
+
+    let mut sub_groups = sub_groups_str.split("\n### ");
+
+    let Some(traits_str) = sub_groups.next() else { 
+        unreachable!("Split always returns at least one element")
+    };
+
+    let traits = match &traits_str
+        .split("\n***")
+        .map(parse_named_entry)
+        .collect::<Result<Traits>>()?[..]
+    {
+        [] => None,
+        traits_arr => Some(traits_arr.to_vec()),
+    };
+
+    let group_map: HashMap<String, &str> = sub_groups
+        .map(|group| {
+            group
+                .split_once('\n')
+                .ok_or_else(|| {
+                    ParseError::new_with_problem(
+                        group,
+                        "Fifth group",
+                        "Group does not have multiple lines",
+                    )
+                })
+                .map(|(key, value): (&str, &str)| (key.trim().to_lowercase(), value))
+        })
+        .try_collect()?;
+
+    let get_entry_type = |entry_type: &str, lines_to_skip: u8| -> Result<Option<Vec<NamedEntry>>> {
+        group_map
+            .get(entry_type)
+            .map(|entries_str| {
+                entries_str
+                    .split("\n***")
+                    .skip(lines_to_skip.into())
+                    .map(parse_named_entry)
+                    .collect::<Result<Vec<NamedEntry>>>()
+            })
+            .transpose()
+    };
+
+    let actions = get_entry_type("actions", 0)?;
+    let bonus_actions = get_entry_type("bonus actions", 0)?;
+    let reactions = get_entry_type("reactions", 0)?;
+    let legendary_actions = get_entry_type("legendary actions", 1)?;
+    let mythic_actions = get_entry_type("mythic actions", 1)?;
+    let mythic_header = group_map.get("mythic actions").map(|entries_str| {
+        entries_str
+            .chars()
+            .take_while(|char_| *char_ != '\n')
+            .collect()
+    });
+
+    Ok((
+        traits,
+        actions,
+        bonus_actions,
+        reactions,
+        legendary_actions,
+        mythic_header,
+        mythic_actions,
+    ))
+}
+
 fn parse_saving_throws(saving_throws_line: &str) -> Result<SavingThrows> {
     saving_throws_line
         .to_lowercase()
@@ -493,9 +582,7 @@ fn parse_challenge_rating(challenge_rating_line: &str) -> Result<ChallengeRating
 fn parse_named_entry(entry: &str) -> Result<NamedEntry> {
     let (name, entries) = entry
         .strip_prefix("***")
-        .ok_or_else(|| {
-            ParseError::new_with_problem(entry, "Named Entry", "No leading `***` found")
-        })?
+        .unwrap_or(entry)
         .split_once("*** ")
         .ok_or_else(|| {
             ParseError::new_with_problem(entry, "Named Entry", "No second `***` found")
