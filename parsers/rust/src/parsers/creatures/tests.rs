@@ -9,7 +9,7 @@ use crate::{
     models::{
         common::{
             AbilityScore, Alignment, AlignmentAxis, AlignmentAxisMoral, AlignmentAxisOrder,
-            DamageType, Skill, StatusCondition, ALL_DAMAGE_TYPES,
+            DamageType, NamedEntry, Skill, StatusCondition, ALL_DAMAGE_TYPES,
         },
         creatures::{
             AbilityScores, ArmorClass, ChallengeRating, ConditionalDamageModifier, CreatureType,
@@ -20,10 +20,12 @@ use crate::{
     parsers::creatures::{
         extract_stat_blocks, parse_challenge_rating, parse_condition_immunities,
         parse_damage_modifier, parse_first_group, parse_fourth_group, parse_languages,
-        parse_saving_throws, parse_second_group, parse_senses, parse_skills, parse_third_group,
-        SavingThrows, Skills,
+        parse_named_entry, parse_saving_throws, parse_second_group, parse_senses, parse_skills,
+        parse_third_group, SavingThrows, Skills,
     },
 };
+
+use super::parse_fifth_group;
 
 #[test]
 fn extract_stat_blocks_test() {
@@ -223,6 +225,105 @@ fn parse_fourth_group_test() {
     assert_eq!(langs, vec!["Common".to_string(), "Giant".to_string()]);
 
     assert_eq!(cr, ChallengeRating::WholeNumber(16));
+}
+
+#[test]
+fn parse_fifth_group_test() {
+    let group = [
+        "***Ability.*** Desc",
+        "***Ability 2.*** Desc 1",
+        "",
+        "### Actions",
+        "***Attack.*** Melee Weapon Attack: +1 to hit",
+        "### Reactions",
+        "",
+        "***Deflect.*** Desc 2",
+        "",
+        "",
+        "***Reflect.*** Hello",
+        "hi",
+        "",
+        "### Legendary Actions",
+        "Can take 3 legendary actions",
+        "***Action 1.*** Desc 3",
+        "### Mythic Actions",
+        "Mythic header",
+        "",
+        "***Mythic 1*** Desc 4",
+    ]
+    .map(ToString::to_string)
+    .to_vec();
+
+    let (traits_p, actions_p, bonus_p, reactions_p, la_p, mh_p, ma_p) =
+        parse_fifth_group(group).unwrap();
+
+    assert_eq!(
+        traits_p,
+        Some(vec![
+            NamedEntry {
+                name: "Ability.".to_string(),
+                entry: "Desc".to_string(),
+                sub_entries: None,
+            },
+            NamedEntry {
+                name: "Ability 2.".to_string(),
+                entry: "Desc 1".to_string(),
+                sub_entries: None,
+            }
+        ]),
+        "\nTraits\n"
+    );
+
+    assert_eq!(
+        actions_p,
+        Some(vec![NamedEntry {
+            name: "Attack.".to_string(),
+            entry: "Melee Weapon Attack: +1 to hit".to_string(),
+            sub_entries: None,
+        }]),
+        "\nActions\n"
+    );
+
+    assert_eq!(bonus_p, None, "Bonus Actions");
+
+    assert_eq!(
+        reactions_p,
+        Some(vec![
+            NamedEntry {
+                name: "Deflect.".to_string(),
+                entry: "Desc 2".to_string(),
+                sub_entries: None,
+            },
+            NamedEntry {
+                name: "Reflect.".to_string(),
+                entry: "Hello\nhi".to_string(),
+                sub_entries: None,
+            }
+        ]),
+        "\nReactions\n"
+    );
+
+    assert_eq!(
+        la_p,
+        Some(vec![NamedEntry {
+            name: "Action 1.".to_string(),
+            entry: "Desc 3".to_string(),
+            sub_entries: None,
+        }]),
+        "\nLegendary actions\n"
+    );
+
+    assert_eq!(mh_p, Some("Mythic header".to_string()), "\nMythic header\n");
+
+    assert_eq!(
+        ma_p,
+        Some(vec![NamedEntry {
+            name: "Mythic 1".to_string(),
+            entry: "Desc 4".to_string(),
+            sub_entries: None,
+        }]),
+        "\nMythic actions\n"
+    );
 }
 
 #[test]
@@ -470,4 +571,29 @@ fn challenge_rating() {
     use ChallengeRating::{Quarter, WholeNumber};
     assert_eq!(parse_challenge_rating("11 (7,200 XP)"), Ok(WholeNumber(11)));
     assert_eq!(parse_challenge_rating("1/4 (400 XP)"), Ok(Quarter));
+}
+
+#[test]
+fn named_entry() {
+    assert_eq!(
+        parse_named_entry("***Ability.*** Description of ability"),
+        Ok(NamedEntry {
+            name: "Ability.".to_string(),
+            entry: "Description of ability".to_string(),
+            sub_entries: None,
+        })
+    );
+
+    assert_eq!(
+        parse_named_entry("***Ability.*** Description of ability\n* **Sub-entry.** Description"),
+        Ok(NamedEntry {
+            name: "Ability.".to_string(),
+            entry: "Description of ability".to_string(),
+            sub_entries: Some(vec![NamedEntry {
+                name: "Sub-entry.".to_string(),
+                entry: "Description".to_string(),
+                sub_entries: None,
+            }]),
+        })
+    );
 }

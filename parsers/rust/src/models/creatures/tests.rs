@@ -233,6 +233,7 @@ fn creature() {
             entry:
                 "Melee Weapon Attack: +5 to hit, reach 5 ft. Hit: 10 (1d10 + 4) slashing damage."
                     .to_string(),
+            sub_entries: None,
         }]),
         bonus_actions: None,
         reactions: None,
